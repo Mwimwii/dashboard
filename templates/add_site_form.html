@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+{% block title %} Add Site {% endblock %}
+
+{% block css %}
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='forms.css') }}" rel="stylesheet" type="text/css"> -->
+{% endblock %}
+
+{% block body %}
+
+
+<strong>
+<div class="container col-lg-auto bg-purple text-center">
+
+    <div class="container  text-center" > 
+    <h2 style="color:green ">Add Site Details  </h2>
+    <br>
+    <p><i>You can add the GRZ websites by using the Name, URL/IP and the port Number</i> </p>
+    <br>
+</div>
+
+<div class="formwrapper"> 
+    <form class="form-horizontal" action="{{url_for('index')}}" method="post" class="mr-2 p-5">
+    
+    <div class="container">
+
+        <div class="">
+            <label for="name" class="">*NAME: </label>
+            <input class="form-control mr-sm-2" type="text" placeholder="Smart Zamiba Institute", name="name">
+        </div>
+
+        <!-- URL ROW -->
+        <div class="form-row">
+            <div class="col-2 my-1">
+                <label class="mr-sm-2" style="visibility: hidden;" for="inlineFormCustomSelect">PROTOCOL:</label>
+                <!-- <label class="mr-sm-2"  for="inlineFormCustomSelect">PROTOCOL:</label> -->
+                <select class="custom-select mr-sm-2" id="inlineFormCustomSelect" name="protocol">
+                    <option selected value="http">HTTP</option>
+                    <option value="https">HTTPS</option>
+                </select>
+            </div>
+            
+            <div class="col-7 mr-sm-2  my-1">
+                <label for="URL" class="mr-sm-2">*URL/IP: </label>
+                <input class="form-control" type="text" placeholder="www.szi.gov.zm OR 192.111.111.1", name="url" >
+            </div>
+                <div class="col-2 mr-sm-2  my-1">
+                    <label for="" class="">PORT: </label>
+            <input class="form-control mr-sm-2" type="text" placeholder="443", name="port" >
+        </div>
+        </div>
+        <br>
+            <input class="btn btn-outline-success my-2 my-sm-0" type="submit" value="Submit">
+        </div>
+    </form>
+</div>
+
+</strong>
+
+{% endblock %}
