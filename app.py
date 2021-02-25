@@ -5,16 +5,16 @@ from flask import Flask
 import requests
 from os.path import abspath, join
 from os import environ, path
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 from decouple import config
 
 basedir = path.abspath(path.dirname(__file__))
-load_dotenv(path.join(basedir, ".env"))
+#load_dotenv(path.join(basedir, ".env"))
 
 # Flask Configurations
 app = Flask(__name__)
 app.config["SECRET_KEY"] = config("SECRET_KEY")
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.sqlite"
+app.config["SQLALCHEMY_DATABASE_URI"] = config("SQLALCHEMY_DATABASE_URI", cast = str)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = config("SQLALCHEMY_TRACK_MODIFICATIONS", cast = bool)
 
 db.init_app(app)
@@ -24,6 +24,7 @@ db.init_app(app)
 def add_new_site(name, url, port,protocol, count_sites):
     new_site = Site(name=name, url=url, port=port, protocol=protocol)
     init_status = Status(timestamp=get_timestamp(), status="INITIALIZING", url_id=count_sites+1)
+    # TODO: add a check for duplicate records
     db.session.add(new_site)
     db.session.add(init_status)
     db.session.commit()
