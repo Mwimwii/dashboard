@@ -6,15 +6,16 @@ import requests
 from os.path import abspath, join
 from os import environ, path
 from dotenv import load_dotenv
+from decouple import config
 
 basedir = path.abspath(path.dirname(__file__))
 load_dotenv(path.join(basedir, ".env"))
 
 # Flask Configurations
 app = Flask(__name__)
-app.config["SECRET_KEY"] ="sqafj92hg92te"
-app.config["SQLALCHEMY_DATABASE_URI"] ="sqlite:///app.sqlite"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] =False
+app.config["SECRET_KEY"] = config("SECRET_KEY")
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.sqlite"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = config("SQLALCHEMY_TRACK_MODIFICATIONS", cast = bool)
 
 db.init_app(app)
 
