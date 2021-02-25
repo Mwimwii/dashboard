@@ -27,6 +27,6 @@ You can run the app with `-h` option to allow other pc's to access the site on t
 
 ```bash
 flask run -h 0.0.0.0
-'''
+```
 
 The web application should now be running on `127.0.0.1:5000` and `<your_ip>:5000`
