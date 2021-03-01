@@ -1,10 +1,15 @@
 # Dashboard
 
+## Introduction
+
+This is a fork of mwimwi's  repository by the same name
+
 ## Download & Installation
 
 ```bash
-git clone https://github.com/Mwimwii/dashboard/
+git clone https://github.com/itisentropy/dashboard/
 cd dashboard
+pip install -r requirements.txt
 ```
 ## Configurations
 
