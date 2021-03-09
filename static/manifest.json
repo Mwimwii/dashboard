@@ -1,0 +1,23 @@
+{
+	"name": "Website uptime dashboard",
+	"display": "standalone",
+	"display_override": ["tabbed", "minimal-ui"],
+	"icons": [],
+	"capture_links": "existing_client_event",
+	"url_handlers": [
+		{
+			"origin": "*.dashboard.com"
+		},
+		{
+			"origin": "*.dashboard.gov.zm"
+		}
+	],
+	"icons":[
+	],
+	"start_url": "/",
+	"background_color": "#cfd8dc",
+	"scope": "/",
+	"theme_color": "#3367D6", 
+  "orientation": "portrait",
+  "description": "Website monitoring app for Smart Zambia Institute officers to be able to tell if and when a website goes offline"
+}

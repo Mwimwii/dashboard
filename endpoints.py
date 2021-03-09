@@ -1,50 +1,58 @@
+from starlette.requests import Request
 from models import Website
+from main import app
 from typing import Optional
+from uuid import UUID
+from fastapi import Header
+from fastapi.responses import HTMLResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
+# Mount the static dir
+app.mount('/static', StaticFiles(directory='static'), name='static')
 
+templates = Jinja2Templates(directory='templates')
+
+# TODO: Read an HTML file that calls the API to return an html list of data to the user
+homepage = "<body>Hello World!!</body>" # TODO: read file here
+websites = {}
 
 # FIXME: fix placeholder routes
 @app.get('/')
-async def read_root():
+async def get_sites(content_type : Optional[str] = Header(str)):
+    if "text/html" in content_type:
+            return HTMLResponse(homepage)
     # TODO: make it return list of all sites.
     return {"hello" : "world"}
 
 # add a website to the dashboard
-@app.post('/')
+@app.post('/', response_model = Website)
 async def add_website(website: Website):
     # TODO: Save the website in a DB or soemthing
     pass
 
 # get information about a particular website
-@app.get('/{site_id}')
-async def get_site_info(site_id: int):
+@app.get('/{site_id}', response_class=HTMLResponse)
+async def get_site_info(site_id: UUID, request: Request):
     # TODO: get a website and its info from DB or something
-    pass
+    return templates.TemplateResponse('siteinfo.html', {'request' : request, 'site_id' : site_id})
+    
+    
 
 # update a single field of a site
-@app.patch('/{site_id}')
-async def get_site_info(site_id: int, \
-    host_name: Optional[str] = None, \
-    protocol: Optional[str] = None, \
-    port: Optional[int] = None, \
-    domain: str = None, \
-    sub_domain: Optional[str] = None):
-    # TODO: update a website's info in DB or something
-    if host_name is not None:
-        pass
-    if protocol is not None:
-        pass
-    if port is not None:
-        pass
-    if domain is not None:
-        pass
-    if sub_domain is not None:
-        pass
-    pass
+@app.patch('/{site_id}', response_model = Website)
+async def update_site_info(site_id: UUID, website: Website):
+    curent_site_data = websites[site_id]
+    curent_site_model = Website(**curent_site_data)
+    update_data = website.dict(exclude_unset=True)
+    updated_site = curent_site_model.copy(update=update_data)
+    websites[site_id] = jsonable_encoder(updated_site)
+    return updated_site
 
 # delete a website
 @app.delete('/{site_id}')
-async def get_site_info(site_id: int):
+async def delete_site(site_id: UUID):
     # TODO: delete a website and its info from DB or something
     pass
 
