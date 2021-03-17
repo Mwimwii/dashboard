@@ -1,67 +1,88 @@
-from fastapi import FastAPI, WebSocket
-from fastapi.param_functions import File
-from starlette.requests import Request
-from models import Website
-from typing import Optional
-from uuid import UUID
-from fastapi import Header
-from fastapi.responses import HTMLResponse
-from fastapi.encoders import jsonable_encoder
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from typing import List
 
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
+html = """
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chat</title>
+    </head>
+    <body>
+        <h1>WebSocket Chat</h1>
+        <h2>Your ID: <span id="ws-id"></span></h2>
+        <form action="" onsubmit="sendMessage(event)">
+            <input type="text" id="messageText" autocomplete="off"/>
+            <button>Send</button>
+        </form>
+        <ul id='messages'>
+        </ul>
+        <script>
+            var client_id = Date.now()
+            document.querySelector("#ws-id").textContent = client_id;
+            var ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`);
+            ws.onmessage = function(event) {
+                var messages = document.getElementById('messages')
+                var message = document.createElement('li')
+                var content = document.createTextNode(event.data)
+                message.appendChild(content)
+                messages.appendChild(message)
+            };
+            function sendMessage(event) {
+                var input = document.getElementById("messageText")
+                ws.send(input.value)
+                input.value = ''
+                event.preventDefault()
+            }
+        </script>
+    </body>
+</html>
+"""
 
-# Mount the static dir
-app.mount('/static', StaticFiles(directory='static'), name='static')
 
-templates = Jinja2Templates(directory='templates')
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
 
-# TODO: Read an HTML file that calls the API to return an html list of data to the user
-websites = {}
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
 
-# FIXME: fix placeholder routes
-@app.get('/')
-async def get_sites(request: Request):
-    return templates.TemplateResponse('home.html', {'request': request})
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
 
-# add a website to the dashboard
-@app.post('/', response_model = Website)
-async def add_website(website: Website):
-    # TODO: Save the website in a DB or soemthing
-    pass
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
 
-# get information about a particular website
-@app.get('/{site_id}', response_class=HTMLResponse)
-async def get_site_info(site_id: UUID, request: Request):
-    # TODO: get a website and its info from DB or something
-    return templates.TemplateResponse('siteinfo.html', {'request' : request, 'site_id' : site_id})
-    
-    
+    async def broadcast(self, message: str, websocket: WebSocket):
+        for connection in self.active_connections:
+            if connection is not websocket:
+                await connection.send_text(message)
 
-# update a single field of a site
-@app.patch('/{site_id}', response_model = Website)
-async def update_site_info(site_id: UUID, website: Website):
-    curent_site_data = websites[site_id]
-    curent_site_model = Website(**curent_site_data)
-    update_data = website.dict(exclude_unset=True)
-    updated_site = curent_site_model.copy(update=update_data)
-    websites[site_id] = jsonable_encoder(updated_site)
-    return updated_site
 
-# delete a website
-@app.delete('/{site_id}')
-async def delete_site(site_id: UUID):
-    # TODO: delete a website and its info from DB or something
-    pass
+manager = ConnectionManager()
 
-@app.websocket('/ws')
-async def socketdemo(websocket: WebSocket):
-    await websocket.accept()
-    while True:
-        data = await websocket.receive_text()
-        await websocket.send_text(f'Message text was:: {data}')
 
-# Check the status of a website.
+@app.get("/")
+async def get():
+    return HTMLResponse(html)
+
+
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: int):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # add site to db
+            await manager.send_personal_message(f"You wrote: {data}", websocket)
+            await manager.broadcast(f"Client #{client_id} says: {data}", websocket)
+
+    except WebSocketDisconnect:
+
+        manager.disconnect(websocket)
+
+        await manager.broadcast(f"Client #{client_id} left the chat")
