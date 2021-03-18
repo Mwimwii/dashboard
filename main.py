@@ -5,6 +5,26 @@ from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
+
+# get current time and append to logs
+
+# App startup events
+@app.on_event('startup')
+def startup_event():
+    # init db, get db objs, do whatever
+    with open('log.txt', mode='a') as log:
+        time = 'now'
+        msg: str = f'[{time}]: Application starting'
+        log.write(msg)
+
+@app.on_event('shutdown')
+def shutdown_event():
+    # do shut down house cleaning
+    with open('log.txt', mode='a') as log:
+        time = 'now'
+        msg: str = f'[{time}]: Application shutting down'
+        log.write(msg)
+
 html = """
 <!DOCTYPE html>
 <html>
