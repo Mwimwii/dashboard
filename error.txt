@@ -1,0 +1,15 @@
+[2021-03-30 13:32:21.091034]: Websocket error:
+	Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+Application shutting down
+[2021-03-30 13:34:11.742817]: Websocket error:
+	1006
+Application shutting down
+[2021-03-30 13:35:41.786152]: Websocket error:
+	1001
+Application shutting down
+[2021-03-30 13:35:45.038583]: Websocket error:
+	1001
+Application shutting down
+[2021-03-30 13:36:05.976549]: Websocket error:
+	1006
+Application shutting down

@@ -1,10 +1,40 @@
 from typing import List
-
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm.session import Session
+from starlette.requests import Request
+from starlette.routing import request_response
+from database import SessionLocal, engine
+from datetime import datetime
+import crud
+import models
+import schemas
+
+# create the database
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+# add middle ware classes
+app.add_middleware(
+    CORSMiddleware, # Enable Cross Origin Resource Sharing
+    allow_origins=['127.0.0.1:8000',]
+)
+
+app.mount('/static', StaticFiles(directory='static'), name='static')
+
+templates = Jinja2Templates(directory='templates')
+
+# Dependancy returns a db connection and closses it once it's used
+def get_db():
+    try:
+        db = SessionLocal()
+        yield db
+    finally:
+        db.close()
 
 # get current time and append to logs
 
@@ -13,54 +43,18 @@ app = FastAPI()
 def startup_event():
     # init db, get db objs, do whatever
     with open('log.txt', mode='a') as log:
-        time = 'now'
-        msg: str = f'[{time}]: Application starting'
-        log.write(msg)
+        time = datetime.now()
+        msg: str = f'[{time}]: Application starting\n'
+        # log.write(msg)
 
 @app.on_event('shutdown')
 def shutdown_event():
     # do shut down house cleaning
     with open('log.txt', mode='a') as log:
-        time = 'now'
-        msg: str = f'[{time}]: Application shutting down'
+        time = datetime.now()
+        msg: str = f'[{time}]: Application shutting down\n'
         log.write(msg)
 
-html = """
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>Chat</title>
-    </head>
-    <body>
-        <h1>WebSocket Chat</h1>
-        <h2>Your ID: <span id="ws-id"></span></h2>
-        <form action="" onsubmit="sendMessage(event)">
-            <input type="text" id="messageText" autocomplete="off"/>
-            <button>Send</button>
-        </form>
-        <ul id='messages'>
-        </ul>
-        <script>
-            var client_id = Date.now()
-            document.querySelector("#ws-id").textContent = client_id;
-            var ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`);
-            ws.onmessage = function(event) {
-                var messages = document.getElementById('messages')
-                var message = document.createElement('li')
-                var content = document.createTextNode(event.data)
-                message.appendChild(content)
-                messages.appendChild(message)
-            };
-            function sendMessage(event) {
-                var input = document.getElementById("messageText")
-                ws.send(input.value)
-                input.value = ''
-                event.preventDefault()
-            }
-        </script>
-    </body>
-</html>
-"""
 
 
 class ConnectionManager:
@@ -80,29 +74,46 @@ class ConnectionManager:
     async def broadcast(self, message: str, websocket: WebSocket):
         for connection in self.active_connections:
             if connection is not websocket:
-                await connection.send_text(message)
-
+                await connection.send_json(message)
 
 manager = ConnectionManager()
 
 
-@app.get("/")
-async def get():
-    return HTMLResponse(html)
+@app.get("/", response_class = HTMLResponse)
+async def get(request: Request):
+    return templates.TemplateResponse('home.html', {'request': request})
 
 
 @app.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: int):
+async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session = Depends(get_db)):
     await manager.connect(websocket)
     try:
         while True:
+            sites = db.query(models.Website).all()
+            # TODO: send models to websocket recipients
             data = await websocket.receive_text()
             # add site to db
             await manager.send_personal_message(f"You wrote: {data}", websocket)
             await manager.broadcast(f"Client #{client_id} says: {data}", websocket)
+            #TODO: Figure out how to send objects to the users
+            await manager.broadcast(sites, websocket)
 
-    except WebSocketDisconnect:
-
+    except WebSocketDisconnect as e:
+        # TODO: log the exception
+        print(f'Websocket error:\n{e}')
+        with open('error.txt', mode='a') as log:
+            time = datetime.now()
+            msg: str = f'[{time}]: Websocket error:\n\t{e}\nApplication shutting down\n'
+            log.write(msg)
         manager.disconnect(websocket)
 
         await manager.broadcast(f"Client #{client_id} left the chat")
+    except Exception as e:
+        with open('error.txt', mode='a') as log:
+            time = datetime.now()
+            msg: str = f'[{time}]: Websocket error:\n\t{e}\nApplication shutting down\n'
+            log.write(msg)
+        # TODO: Make a log here.
+
+def ping_sites():
+    pass

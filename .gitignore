@@ -3,3 +3,4 @@ env/
 __pycache__/
 .env
 update_deps.bat
+*.db
