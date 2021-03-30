@@ -93,7 +93,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
             # TODO: send models to websocket recipients
             data = await websocket.receive_text()
             # add site to db
+            # /notify the sender of succesful trans
             await manager.send_personal_message(f"You wrote: {data}", websocket)
+
             await manager.broadcast(f"Client #{client_id} says: {data}", websocket)
             #TODO: Figure out how to send objects to the users
             await manager.broadcast(sites, websocket)
@@ -114,6 +116,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
             msg: str = f'[{time}]: Websocket error:\n\t{e}\nApplication shutting down\n'
             log.write(msg)
         # TODO: Make a log here.
+
+@app.get("/addsite")
+async def add_site():
+    pass
 
 def ping_sites():
     pass
