@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Protocol
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import backref, relationship
 from sqlalchemy.sql.expression import false
@@ -23,6 +24,9 @@ class Website(Base):
     url = Column(String, nullable=False)
     port = Column(String, nullable=False)
     protocol = Column(String, nullable=False)
+
+    def get_url(self):
+        return f'{self.protocol}://{self.url}:{self.port}'
 
 class Status(Base):
     __tablename__ = "status"
