@@ -28,3 +28,9 @@ Application shutting down
 [2021-03-30 15:23:43.694829]: Websocket error:
 	1001
 Application shutting down
+[2021-04-01 11:20:51.803326]: Websocket error:
+	1001
+Application shutting down
+[2021-04-01 11:21:17.525879]: Websocket error:
+	1001
+Application shutting down

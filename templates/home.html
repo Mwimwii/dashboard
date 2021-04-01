@@ -18,7 +18,24 @@
       <ul id="messages"></ul>
     </div>
     <aside id="right-sidebar">
-        <a href="./addsite">Add a site</a>
+        <dialog id="add-website">
+          <form method = "dialog">
+            <p> Add a website
+              <label> Site Name
+                <input id="sitename" placeholder="Enter the website's name" type="text">
+              </label>
+              <label> Protocol
+                <select>
+                  <option disabled selected>Select a protocol</option>
+                  <option>http</option>
+                  <option>https</option>
+                  <option>ftp</option>
+                </select>
+              </label>
+              <label>
+            </p>
+          </form>
+        </dialog>
     </aside>
     <script src="{{  url_for('static', path='/js/websocket.js')  }}"></script>
   </body>

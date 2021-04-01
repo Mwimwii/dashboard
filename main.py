@@ -1,14 +1,17 @@
 from typing import List
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Form
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.encoders import jsonable_encoder
+import sqlalchemy
 from sqlalchemy.orm.session import Session
 from starlette.requests import Request
 from starlette.routing import request_response
 from database import SessionLocal, engine
 from datetime import datetime
+from app_log import log
 import crud
 import models
 import schemas
@@ -71,11 +74,15 @@ class ConnectionManager:
     async def send_personal_message(self, message: str, websocket: WebSocket):
         await websocket.send_text(message)
 
-    async def broadcast(self, message: str, websocket: WebSocket):
+    async def broadcast(self, message: str, websocket: WebSocket = None):
         for connection in self.active_connections:
+            if websocket is None:
+                await connection.send_json(message)
+                return
             if connection is not websocket:
                 await connection.send_json(message)
 
+# Instantiate the connection manager
 manager = ConnectionManager()
 
 
@@ -83,13 +90,64 @@ manager = ConnectionManager()
 async def get(request: Request):
     return templates.TemplateResponse('home.html', {'request': request})
 
+@app.post("/addsite")
+async def add_site(name: str = Form(...), url: str = Form(...), port: str = Form(...), protocol: str = Form(...), db: Session = Depends(get_db)):
+    # Create the website based on form data
+    website: models.Website = models.Website(name=name, protocol=protocol, url=url, port=port)
+    try:
+        # add the website to the DB Session
+        db.add(website)
+        # Commit the transaction (save to DB)
+        db.commit()
+    except sqlalchemy.exc.InvalidRequestError as e:
+        # log the exception
+        msg = f'Error commiting a website add:\n\t{e}'
+        log.error(msg,exc_info=True)
+    except Exception as e:
+        # log unknown error
+        msg = f'Unknown exception:\n\t{e}'
+        log.error(msg, exc_info=True)       
+
+@app.delete("/delete/{id}")
+async def remove_site(id: str, db: Session = Depends(get_db)):
+    website: models.Website = db.query(models.Website).filter_by(id = id)
+    if website is None:
+        # Log error
+        msg = f"Delete query for a website with id '{id}':\n\t No such website in the database."
+        log.error(msg=msg, exc_info=True)
+        return
+
+@app.patch("/update/{id}")
+async def update_site(id:str, db: Session = Depends(get_db)):
+    website: models.Website = db.query(models.Website).filter_by(id = id)
+    if website is None:
+        # Log error
+        msg = f"Update query for a website with id '{id}':\n\t No such website in the database."
+        log.error(msg=msg, exc_info=True)
+        return
+    try:
+        # TODO get site data from req body
+        pass
+    except Exception as e:
+        # Log error
+        msg = f"Delete query for a website with id '{id}':\n\t No such website in the database."
+        log.error(msg=msg, exc_info=True)
+        pass
+
+    pass
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session = Depends(get_db)):
     await manager.connect(websocket)
+    # Get list of sites
+    sites = db.query(models.Website).all()
     try:
         while True:
-            sites = db.query(models.Website).all()
+
+            #TODO: Figure out how to send objects to the users
+            # Send list of sites to all clients
+            await manager.broadcast(sites, websocket)
+            
             # TODO: send models to websocket recipients
             data = await websocket.receive_text()
             # add site to db
@@ -97,8 +155,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
             await manager.send_personal_message(f"You wrote: {data}", websocket)
 
             await manager.broadcast(f"Client #{client_id} says: {data}", websocket)
-            #TODO: Figure out how to send objects to the users
-            await manager.broadcast(sites, websocket)
+            
 
     except WebSocketDisconnect as e:
         # TODO: log the exception
@@ -116,10 +173,6 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
             msg: str = f'[{time}]: Websocket error:\n\t{e}\nApplication shutting down\n'
             log.write(msg)
         # TODO: Make a log here.
-
-@app.get("/addsite")
-async def add_site():
-    pass
 
 def ping_sites():
     pass
