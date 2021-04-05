@@ -40,7 +40,7 @@ app.mount('/static', StaticFiles(directory='static'), name='static')
 templates = Jinja2Templates(directory='templates')
 
 # logger variable
-log: Logger = None
+log: Logger = make_logger()
 
 # Dependancy returns a db connection and closses it once it's used
 def get_db():
@@ -105,7 +105,7 @@ async def get(request: Request):
 
 # An endpoint to add a website
 @app.post("/addsite")
-async def add_site(new_site: schemas.Website, db: Session = Depends(get_db)):
+async def add_site(new_site: schemas.WebsitePost, db: Session = Depends(get_db)):
     # Create the website based on request body
     website: models.Website = models.Website(
         name = new_site.name, 
@@ -123,7 +123,7 @@ async def add_site(new_site: schemas.Website, db: Session = Depends(get_db)):
         # Get list of sites
         sites = db.query(models.Website).all()
         # Broadcast site list to all clients
-        manager.broadcast(sites)
+        await manager.broadcast(sites)
     except sqlalchemy.exc.InvalidRequestError as e:
         # log the exception
         msg = f'Error commiting a website add for site {website.name} ({website.get_url}):\n\t{e}'
@@ -135,7 +135,7 @@ async def add_site(new_site: schemas.Website, db: Session = Depends(get_db)):
 
 # An endpoint to modify a website
 @app.patch("/update/{id}")
-async def update_site(id:str, update: schemas.Website, db: Session = Depends(get_db)):
+async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depends(get_db)):
     # get the object to be updated from DB
     website: models.Website = db.query(models.Website).filter_by(id = id)
     if website is None:
@@ -157,7 +157,7 @@ async def update_site(id:str, update: schemas.Website, db: Session = Depends(get
         # Get list of all sites
         sites = db.query(models.Website).all()
         # Update all clients with new list
-        manager.broadcast(sites)
+        await manager.broadcast(sites)
         # log successful update
         log.info(f"Succsefully updated site: {website.name} ({website.get_url}) with data:\n{update}")
     except Exception as e:
@@ -186,7 +186,7 @@ async def remove_site(id: str, db: Session = Depends(get_db)):
         # Get list of sites
         sites = db.query(models.Website).all()
         # update all socket clients of new list
-        manager.broadcast(sites)
+        await manager.broadcast(sites)
     except Exception as e:
         # log unknown error
         msg = f"Unknown exception deleting website with id '{id}':\n\t{e}"
