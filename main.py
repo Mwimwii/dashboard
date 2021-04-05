@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
-import sqlalchemy
+from pythonping.executor import Response
 from sqlalchemy import exc
 from sqlalchemy.orm.session import Session
 from starlette.requests import Request
@@ -13,9 +13,12 @@ from starlette.routing import request_response
 from database import SessionLocal, engine
 from datetime import datetime
 from app_log import log
-import crud
+from pythonping import ping
+import sqlalchemy
 import models
 import schemas
+import requests
+import random
 
 # create the database
 models.Base.metadata.create_all(bind=engine)
@@ -46,20 +49,22 @@ def get_db():
 # App startup events
 @app.on_event('startup')
 def startup_event():
+    log.info("App starting up")
     # init db, get db objs, do whatever
-    with open('log.txt', mode='a') as log:
+    with open('log.txt', mode='a') as log_file:
         time = datetime.now()
         msg: str = f'[{time}]: Application starting\n'
-        # log.write(msg)
+        # log_file.write(msg)
 
 # App shutdown events
 @app.on_event('shutdown')
 def shutdown_event():
+    log.warning("App shutting down")
     # do shut down house cleaning
-    with open('log.txt', mode='a') as log:
+    with open('log.txt', mode='a') as log_file:
         time = datetime.now()
         msg: str = f'[{time}]: Application shutting down\n'
-        log.write(msg)
+        # log_file.write(msg)
 
 class ConnectionManager:
     def __init__(self):
@@ -113,7 +118,7 @@ async def add_site(name: str = Form(...), url: str = Form(...), port: str = Form
         log.error(msg,exc_info=True)
     except Exception as e:
         # log unknown error
-        msg = f'Unknown exception:\n\t{e}'
+        msg = f'Unknown exception commiting add for site {website.name} ({website.get_url})::\n\t{e}'
         log.error(msg, exc_info=True)       
 
 # An endpoint to modify a website
@@ -196,22 +201,130 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
             await manager.broadcast(f"Client #{client_id} says: {data}", websocket)
             
     except WebSocketDisconnect as e:
-        # TODO: log the exception
-        print(f'Websocket error:\n{e}')
+        #print(f'Websocket  error:\n{e}')
+        # log the exception
+        msg: str = f'WebsocketDisconnect error:\n\t{e}\n'
+        log.error(msg,exc_info=True)
         with open('error.txt', mode='a') as log:
             time = datetime.now()
-            msg: str = f'[{time}]: Websocket error:\n\t{e}\nApplication shutting down\n'
-            log.write(msg)
+            msg: str = f'WebsocketDisconnect error:\n\t{e}\nApplication shutting down\n'
+            #log.write(msg)
         manager.disconnect(websocket)
 
         await manager.broadcast(f"Client #{client_id} left the chat")
     except Exception as e:
+        # log the exception
+        msg: str = f'Websocket error:\n\t{e}\n'
+        log.error(msg,exc_info=True)
         with open('error.txt', mode='a') as log:
             time = datetime.now()
             msg: str = f'[{time}]: Websocket error:\n\t{e}\nApplication shutting down\n'
-            log.write(msg)
-        # TODO: Make a log here.
+            #log.write(msg)
 
 # A method to ping the sites
-def ping_sites():
-    pass
+async def ping_site(website: models.Website) -> bool:
+    '''
+    This method uses the pythonping package to do ICMP echoes to a given host
+    because ICMP can only be sent from root mode it means this script needs to be run as root
+    '''
+    is_online: bool = False
+    try:
+        response: Response = ping(website.get_url, count=1)
+        if response.success:
+            msg: str = f'Ping succsessfule for site {website.name} ({website.get_url})'
+            log.info(msg)
+            is_online =  True
+        else:
+            msg: str = f'Ping failed for site {website.name} ({website.get_url}):\n\t{response.error_message}'
+            log.warning(msg)
+            is_online =  False
+    except Exception as e:
+        is_online = False
+        # log the exception
+        msg: str = f'Ping error for site {website.name} ({website.get_url}):\n\t{e}\n'
+        log.error(msg,exc_info=True)
+    finally:
+        return is_online
+
+# A method to test webservers
+async def test_site(website: models.Website) -> str:
+    site_status : str = ''
+    try:
+        # headers for chrome browser to prevent a bot block making us report false errors
+        user_agent_list = [
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:77.0) Gecko/20100101 Firefox/77.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
+        ]
+        for i in range(1,4):
+            #Pick a random user agent
+            user_agent = random.choice(user_agent_list)
+            #Set the headers 
+            headers = {'User-Agent': user_agent}
+            # send a request to the site and log the response
+            response = requests.get(website.get_url, headers=headers)
+            if response.status_code == 200:
+                msg = f"site {website.name} ({website.get_url}) online with 200 response"
+                log.info(msg=msg)
+            else:
+                msg = f"Warnign: site {website.name} ({website.get_url}) online but has a {response.status_code} response"
+                log.warning(msg)
+            site_status = str(response.status_code)
+    except requests.exceptions.ConnectionError as e:
+        site_status = 'Unable to connect'
+        # log connection error
+        msg: str = f'{site_status} site {website.name} ({website.get_url}):\n\t{e}\n'
+        log.error(msg,exc_info=True)
+    except Exception as e:
+        site_status = 'Unknown Error checking page'
+        # log the exception
+        msg: str = f'Unknown exception checking site {website.name} ({website.get_url}):\n\t{e}\n'
+        log.error(msg,exc_info=True)
+    finally:
+        return site_status
+
+# Site checking method
+async def site_checker(website: models.Website) -> bool:
+    success: bool = False
+    try:
+        # get the database session
+        db: Session = next(get_db())
+        # create a new status object
+        status: models.Status = models.Status()
+        # connect the status to a site
+        status.url_id = website.id
+        # ping site and store onlineness
+        status.online = await ping_site(website)
+        # Check the site and store response code
+        status.response_code = await test_site(website)
+        # get the timestamp
+        status.timestamp = datetime.datetime.now()
+        # add the status to the DB
+        db.add(status)
+        db.commit()
+        success = True
+    except sqlalchemy.exc.InvalidRequestError as e:
+        # log the exception
+        msg = f'Error commiting a status add for site {website.name} ({website.get_url}):\n\t{e}'
+        log.error(msg,exc_info=True)
+    except Exception as e:
+        # log unknown error
+        msg = f'Unknown exception commiting a status add for site {website.name} ({website.get_url}):\n\t{e}'
+        log.error(msg, exc_info=True)
+    finally:
+        return success 
+
+# method that does the site checking (pings and requests)
+async def do_checks():
+    # get list of sites
+    db: Session = next(get_db())
+    sites: List[models.Website] = db.query(models.Website).all()
+    # TODO: parralelise the call to sitecheck with list
+    _ = [await site_checker(site) for site in sites]
+    # get list of stati
+    stati: List[models.Status] = db.query(models.Status).all()
+    # Broadcast stati to the clients
+    manager.broadcast(stati)
+# TODO: run schedule to perform site checks here
