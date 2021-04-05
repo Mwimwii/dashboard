@@ -1,4 +1,5 @@
 from datetime import datetime
+from fastapi import responses
 from pydantic import BaseModel
 from typing import List
 
@@ -16,7 +17,8 @@ class Website(BaseModel):
 class Status(BaseModel):
     id: int
     timestamp: datetime
-    status: str
+    online: bool
+    response_code: str
 
     class Config:
         orm_mode = True
