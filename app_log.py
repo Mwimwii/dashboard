@@ -45,5 +45,7 @@ config = {
     },
 }
 
-logging.config.dictConfig(config)
-log = logging.getLogger()
+def make_logger() -> logging.Logger:
+    logging.config.dictConfig(config)
+    log = logging.getLogger()
+    return log

@@ -1,3 +1,4 @@
+from logging import Logger
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Form
 from fastapi.responses import HTMLResponse
@@ -12,7 +13,7 @@ from starlette.requests import Request
 from starlette.routing import request_response
 from database import SessionLocal, engine
 from datetime import datetime
-from app_log import log
+from app_log import make_logger
 from pythonping import ping
 import sqlalchemy
 import models
@@ -38,6 +39,9 @@ app.mount('/static', StaticFiles(directory='static'), name='static')
 # Mount the templates directory
 templates = Jinja2Templates(directory='templates')
 
+# logger variable
+log: Logger = None
+
 # Dependancy returns a db connection and closses it once it's used
 def get_db():
     try:
@@ -49,6 +53,9 @@ def get_db():
 # App startup events
 @app.on_event('startup')
 def startup_event():
+    # creae the logger
+    log = make_logger()
+    # log app startup
     log.info("App starting up")
     # init db, get db objs, do whatever
     with open('log.txt', mode='a') as log_file:
@@ -98,9 +105,14 @@ async def get(request: Request):
 
 # An endpoint to add a website
 @app.post("/addsite")
-async def add_site(name: str = Form(...), url: str = Form(...), port: str = Form(...), protocol: str = Form(...), db: Session = Depends(get_db)):
-    # Create the website based on form data
-    website: models.Website = models.Website(name=name, protocol=protocol, url=url, port=port)
+async def add_site(new_site: schemas.Website, db: Session = Depends(get_db)):
+    # Create the website based on request body
+    website: models.Website = models.Website(
+        name = new_site.name, 
+        protocol = new_site.protocol, 
+        url = new_site.url,
+        port = new_site.port,
+    )
     try:
         # add the website to the DB Session
         db.add(website)
