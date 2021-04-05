@@ -173,14 +173,14 @@ async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depend
 # An endpoint to delete a website
 @app.delete("/delete/{id}")
 async def remove_site(id: str, db: Session = Depends(get_db)):
-    website: models.Website = db.query(models.Website).filter_by(id = id)
-    if website is None:
-        # Log error
-        msg = f"Delete query for a website with id '{id}':\n\t No such website in the database."
-        log.error(msg=msg, exc_info=True)
-        return
     try:
-        db.delete(website)
+        website: models.Website = db.query(models.Website).filter_by(id = id)
+        if website is None:
+            # Log error
+            msg = f"Delete query for a website with id '{id}':\n\t No such website in the database."
+            log.error(msg=msg, exc_info=True)
+            return
+        db.query(models.Website).filter_by(id = id).delete(synchronize_session='evaluate')
         db.commit()
         log.info(f"Website {website.name}({website.get_url}) with id '{website.id}' succsesfully deleted from the database")
         # Get list of sites
