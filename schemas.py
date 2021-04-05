@@ -1,18 +1,29 @@
 from datetime import datetime
 from fastapi import responses
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
-
+# Default class for websites used for API's serialisation and Request validation
 class Website(BaseModel):
-    id: int
+    id: Optional[int]
+
+    class Config:
+        orm_mode = True
+
+# validate patch requests
+class WebsitePatch(Website):
+    name: Optional[str]
+    url: Optional[str]
+    port: Optional[str]
+    protocol: Optional[str]
+
+# validate Post requests
+class WebsitePost(Website):
     name: str
     url: str
     port: str
     protocol: str
 
-    class Config:
-        orm_mode = True
 
 class Status(BaseModel):
     id: int
