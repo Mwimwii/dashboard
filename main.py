@@ -1,4 +1,5 @@
 from logging import Logger
+import logging
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Form
 from fastapi.responses import HTMLResponse
@@ -6,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel
 from pythonping.executor import Response
 from sqlalchemy import exc
 from sqlalchemy.orm.session import Session
@@ -13,6 +15,7 @@ from starlette.requests import Request
 from starlette.routing import request_response
 from database import SessionLocal, engine
 from datetime import datetime
+from loguru import logger
 from app_log import make_logger
 from pythonping import ping
 import sqlalchemy
@@ -40,7 +43,7 @@ app.mount('/static', StaticFiles(directory='static'), name='static')
 templates = Jinja2Templates(directory='templates')
 
 # logger variable
-log: Logger = make_logger()
+log: Logger = logging.getLogger("fastapi")
 
 # Dependancy returns a db connection and closses it once it's used
 def get_db():
@@ -50,11 +53,14 @@ def get_db():
     finally:
         db.close()
 
+async def convert_sites(websites: List[models.Website]) -> List[schemas.WebsitePost]:
+    sites: List[schemas.WebsitePost] = [schemas.WebsitePost(id = x.id, name = x.name, protocol = x.protocol, url = x.url, port = x.port) for x in  websites]
+    return sites
+
 # App startup events
 @app.on_event('startup')
 def startup_event():
     # creae the logger
-    log = make_logger()
     # log app startup
     log.info("App starting up")
     # init db, get db objs, do whatever
@@ -84,12 +90,13 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
 
-    async def send_personal_message(self, message: str, websocket: WebSocket):
+    async def send_personal_message(self, message: BaseModel, websocket: WebSocket):
         await websocket.send_text(message)
 
-    async def broadcast(self, message: str, websocket: WebSocket = None):
+    async def broadcast(self, message: BaseModel, websocket: WebSocket = None):
         for connection in self.active_connections:
             if websocket is None:
+                message = jsonable_encoder(message)
                 await connection.send_json(message)
                 return
             if connection is not websocket:
@@ -155,7 +162,7 @@ async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depend
         # Commit the changes
         db.commit()
         # Get list of all sites
-        sites = db.query(models.Website).all()
+        sites = await convert_sites(db.query(models.Website).all())
         # Update all clients with new list
         await manager.broadcast(sites)
         # log successful update
@@ -197,21 +204,12 @@ async def remove_site(id: str, db: Session = Depends(get_db)):
 async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session = Depends(get_db)):
     await manager.connect(websocket)
     # Get list of sites
-    sites = db.query(models.Website).all()
+    sites: List[schemas.WebsitePost] = await convert_sites(db.query(models.Website).all())
+    print(sites[0])
+    #log.warning(sites[0])
     try:
-        while True:
-            #TODO: Figure out how to send objects to the users
-            # Send list of sites to all clients
-            await manager.broadcast(sites, websocket)
-            # TODO: send models to websocket recipients
-            data = await websocket.receive_text()
-            # Recieve a message
-            message = await websocket.receive_json()
-            # add site to db
-            # /notify the sender of succesful trans
-            await manager.send_personal_message(f"You wrote: {data}", websocket)
-            await manager.broadcast(f"Client #{client_id} says: {data}", websocket)
-            
+        # Send list of sites to all clients
+        await manager.broadcast(sites)
     except WebSocketDisconnect as e:
         #print(f'Websocket  error:\n{e}')
         # log the exception
@@ -227,7 +225,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
     except Exception as e:
         # log the exception
         msg: str = f'Websocket error:\n\t{e}\n'
-        log.error(msg,exc_info=True)
+        #log.error(msg,exc_info=True)
         with open('error.txt', mode='a') as log:
             time = datetime.now()
             msg: str = f'[{time}]: Websocket error:\n\t{e}\nApplication shutting down\n'
