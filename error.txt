@@ -1,0 +1,39 @@
+[2021-03-30 13:32:21.091034]: Websocket error:
+	Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+Application shutting down
+[2021-03-30 13:34:11.742817]: Websocket error:
+	1006
+Application shutting down
+[2021-03-30 13:35:41.786152]: Websocket error:
+	1001
+Application shutting down
+[2021-03-30 13:35:45.038583]: Websocket error:
+	1001
+Application shutting down
+[2021-03-30 13:36:05.976549]: Websocket error:
+	1006
+Application shutting down
+[2021-03-30 14:42:01.887322]: Websocket error:
+	1001
+Application shutting down
+[2021-03-30 14:42:06.015372]: Websocket error:
+	1001
+Application shutting down
+[2021-03-30 15:19:41.618064]: Websocket error:
+	Object of type Website is not JSON serializable
+Application shutting down
+[2021-03-30 15:19:45.662071]: Websocket error:
+	Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.
+Application shutting down
+[2021-03-30 15:23:43.694829]: Websocket error:
+	1001
+Application shutting down
+[2021-04-01 11:20:51.803326]: Websocket error:
+	1001
+Application shutting down
+[2021-04-01 11:21:17.525879]: Websocket error:
+	1001
+Application shutting down
+[2021-04-01 16:05:15.377279]: Websocket error:
+	1001
+Application shutting down
