@@ -21,4 +21,4 @@ if you do not want hot reloads you can exclude it byt omiting the `--reload` arg
 uvicorn main:app --reload
 ```
 
-The web application should now be running on `127.0.0.1:5000` and `<your_ip>:5000`
+The web application should now be running on `127.0.0.1:8000` and `<your_ip>:8000`
