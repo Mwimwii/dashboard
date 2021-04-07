@@ -1,4 +1,6 @@
-from logging import Logger
+from apscheduler.job import Job
+from apscheduler.schedulers.background import BackgroundScheduler
+from logging import Logger, debug
 import logging
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Form
@@ -16,13 +18,33 @@ from starlette.routing import request_response
 from database import SessionLocal, engine
 from datetime import datetime
 from loguru import logger
+from apscheduler.executors.pool import ThreadPoolExecutor#, ProcessPoolExecutor
 from app_log import make_logger
 from pythonping import ping
+import asyncio
 import sqlalchemy
 import models
 import schemas
 import requests
 import random
+
+# Executors for the app scheduler. Use threads, then fall back on processes
+executors = {
+    'default' : ThreadPoolExecutor(max_workers=30),
+    # 'processpool' : ProcessPoolExecutor(max_workers=2)
+}
+
+# Initialise the logger
+log: Logger = make_logger()
+
+# # set the app scheduler log level to debug
+logging.basicConfig()
+logging.getLogger('apscheduler').setLevel(logging.DEBUG)
+
+# Create a background scheduler
+scheduler: BackgroundScheduler = BackgroundScheduler(executers=executors)
+# start the scheduler
+scheduler.start()
 
 # create the database
 models.Base.metadata.create_all(bind=engine)
@@ -42,9 +64,6 @@ app.mount('/static', StaticFiles(directory='static'), name='static')
 # Mount the templates directory
 templates = Jinja2Templates(directory='templates')
 
-# logger variable
-log: Logger = logging.getLogger("fastapi")
-
 # Dependancy returns a db connection and closses it once it's used
 def get_db():
     try:
@@ -57,28 +76,7 @@ async def convert_sites(websites: List[models.Website]) -> List[schemas.WebsiteP
     sites: List[schemas.WebsitePost] = [schemas.WebsitePost(id = x.id, name = x.name, protocol = x.protocol, url = x.url, port = x.port) for x in  websites]
     return sites
 
-# App startup events
-@app.on_event('startup')
-def startup_event():
-    # creae the logger
-    # log app startup
-    log.info("App starting up")
-    # init db, get db objs, do whatever
-    with open('log.txt', mode='a') as log_file:
-        time = datetime.now()
-        msg: str = f'[{time}]: Application starting\n'
-        # log_file.write(msg)
-
-# App shutdown events
-@app.on_event('shutdown')
-def shutdown_event():
-    log.warning("App shutting down")
-    # do shut down house cleaning
-    with open('log.txt', mode='a') as log_file:
-        time = datetime.now()
-        msg: str = f'[{time}]: Application shutting down\n'
-        # log_file.write(msg)
-
+# Connection manager to manage all websocket connections to the site
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -221,7 +219,8 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
             #log.write(msg)
         manager.disconnect(websocket)
 
-        await manager.broadcast(f"Client #{client_id} left the chat")
+        msg = f"Client #{client_id} disconnected"
+        logger.info(msg)
     except Exception as e:
         # log the exception
         msg: str = f'Websocket error:\n\t{e}\n'
@@ -305,7 +304,7 @@ async def site_checker(website: models.Website) -> bool:
         status: models.Status = models.Status()
         # connect the status to a site
         status.url_id = website.id
-        # ping site and store onlineness
+        # ping server and store onlineness
         status.online = await ping_site(website)
         # Check the site and store response code
         status.response_code = await test_site(website)
@@ -338,3 +337,39 @@ async def do_checks():
     # Broadcast stati to the clients
     manager.broadcast(stati)
 # TODO: run schedule to perform site checks here
+def checker_jobs():
+    try:
+        asyncio.run(do_checks())
+    except Exception as e:
+        msg: str = f"Failed to site health checking job.\nException info:\n\t{e}"
+        log.error(msg=msg, exc_info=True)
+
+# ***************************************
+# Event Listeners
+# ***************************************
+
+# App startup events
+@app.on_event('startup')
+def startup_event():
+    # creae the logger
+    # log app startup
+    log.info("App starting up")
+    # Schedule health check jobs
+    dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=100 , minutes=1, id='dashboard_site_pinger')
+    # init db, get db objs, do whatever
+    with open('log.txt', mode='a') as log_file:
+        time = datetime.now()
+        msg: str = f'[{time}]: Application starting\n'
+        # log_file.write(msg)
+
+# App shutdown events
+@app.on_event('shutdown')
+def shutdown_event():
+    log.warning("App shutting down")
+    # Shutdown the scheduler
+    scheduler.shutdown()
+    # do shut down house cleaning
+    with open('log.txt', mode='a') as log_file:
+        time = datetime.now()
+        msg: str = f'[{time}]: Application shutting down\n'
+        # log_file.write(msg)
