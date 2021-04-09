@@ -4,10 +4,11 @@ var ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`);
 var peekContent
 ws.onmessage = function(event) {
     // TODO: get site list from here and append to it
-    var content = document.createTextNode(event.data)
+    var content = event.data
     let sites = content
     let statuses = content
-    peekContent = content           
+    peekContent = content
+    console.log(`recieved ${content[0]}`)        
 };
 function sendMessage(event) {
     var input = document.getElementById("messageText")

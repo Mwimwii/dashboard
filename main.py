@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from pythonping.executor import Response
+from pythonping import ping
 from sqlalchemy import exc
 from sqlalchemy.orm.session import Session
 from starlette.requests import Request
@@ -20,7 +21,6 @@ from datetime import datetime
 from loguru import logger
 from apscheduler.executors.pool import ThreadPoolExecutor#, ProcessPoolExecutor
 from app_log import make_logger
-from pythonping import ping
 import asyncio
 import sqlalchemy
 import models
@@ -39,7 +39,7 @@ log: Logger = make_logger()
 
 # # set the app scheduler log level to debug
 logging.basicConfig()
-logging.getLogger('apscheduler').setLevel(logging.DEBUG)
+logging.getLogger('apscheduler').setLevel(logging.ERROR)
 
 # Create a background scheduler
 scheduler: BackgroundScheduler = BackgroundScheduler(executers=executors)
@@ -55,7 +55,7 @@ app = FastAPI()
 # add middle ware classes
 app.add_middleware(
     CORSMiddleware, # Enable Cross Origin Resource Sharing
-    allow_origins=['127.0.0.1:8000',]
+    allow_origins=['127.0.0.1:8000',] # enable the listed sites as origins
 )
 
 # Moount the static files folder
@@ -103,6 +103,12 @@ class ConnectionManager:
 # Instantiate the connection manager
 manager = ConnectionManager()
 
+# Function to broadcast through the connection manager
+def broadcast(data: List[BaseModel]):
+    # only fire a broadcast if t
+    if manager.active_connections > 0:
+        manager.broadcast(data)
+
 # An endpoint tothe homepage (site root)
 @app.get("/", response_class = HTMLResponse)
 async def get(request: Request):
@@ -124,18 +130,18 @@ async def add_site(new_site: schemas.WebsitePost, db: Session = Depends(get_db))
         # Commit the transaction (save to DB)
         db.commit()
         # log the add
-        log.info(f"Website {website.name} ({website.get_url}) with id '{website.id}' succsesfully added to the database")
+        log.info(f"Website {website.name} ({website.get_url()}) with id '{website.id}' succsesfully added to the database")
         # Get list of sites
         sites = db.query(models.Website).all()
         # Broadcast site list to all clients
         await manager.broadcast(sites)
     except sqlalchemy.exc.InvalidRequestError as e:
         # log the exception
-        msg = f'Error commiting a website add for site {website.name} ({website.get_url}):\n\t{e}'
+        msg = f'Error commiting a website add for site {website.name} ({website.get_url()}):\n\t{e}'
         log.error(msg,exc_info=True)
     except Exception as e:
         # log unknown error
-        msg = f'Unknown exception commiting add for site {website.name} ({website.get_url})::\n\t{e}'
+        msg = f'Unknown exception commiting add for site {website.name} ({website.get_url()})::\n\t{e}'
         log.error(msg, exc_info=True)       
 
 # An endpoint to modify a website
@@ -164,7 +170,7 @@ async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depend
         # Update all clients with new list
         await manager.broadcast(sites)
         # log successful update
-        log.info(f"Succsefully updated site: {website.name} ({website.get_url}) with data:\n{update}")
+        log.info(f"Succsefully updated site: {website.name} ({website.get_url()}) with data:\n{update}")
     except Exception as e:
         # Log error
         msg = f"Delete query for a website with id '{id}':\n\t No such website in the database."
@@ -187,7 +193,7 @@ async def remove_site(id: str, db: Session = Depends(get_db)):
             return
         db.query(models.Website).filter_by(id = id).delete(synchronize_session='evaluate')
         db.commit()
-        log.info(f"Website {website.name}({website.get_url}) with id '{website.id}' succsesfully deleted from the database")
+        log.info(f"Website {website.name}({website.get_url()}) with id '{website.id}' succsesfully deleted from the database")
         # Get list of sites
         sites = db.query(models.Website).all()
         # update all socket clients of new list
@@ -203,8 +209,6 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
     await manager.connect(websocket)
     # Get list of sites
     sites: List[schemas.WebsitePost] = await convert_sites(db.query(models.Website).all())
-    print(sites[0])
-    #log.warning(sites[0])
     try:
         # Send list of sites to all clients
         await manager.broadcast(sites)
@@ -238,19 +242,19 @@ async def ping_site(website: models.Website) -> bool:
     '''
     is_online: bool = False
     try:
-        response: Response = ping(website.get_url, count=1)
+        response: Response = ping(website.url, count=1)
         if response.success:
-            msg: str = f'Ping succsessfule for site {website.name} ({website.get_url})'
+            msg: str = f'Ping succsessfule for site {website.name} ({website.get_url()})'
             log.info(msg)
             is_online =  True
         else:
-            msg: str = f'Ping failed for site {website.name} ({website.get_url}):\n\t{response.error_message}'
+            msg: str = f'Ping failed for site {website.name} ({website.get_url()}):\n\t{response.error_message}'
             log.warning(msg)
             is_online =  False
     except Exception as e:
         is_online = False
         # log the exception
-        msg: str = f'Ping error for site {website.name} ({website.get_url}):\n\t{e}\n'
+        msg: str = f'Ping error for site {website.name} ({website.get_url()}):\n\t{e}\n'
         log.error(msg,exc_info=True)
     finally:
         return is_online
@@ -258,38 +262,57 @@ async def ping_site(website: models.Website) -> bool:
 # A method to test webservers
 async def test_site(website: models.Website) -> str:
     site_status : str = ''
+    # headers for chrome browser to prevent a bot block making us report false errors
+    user_agent_list = [
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:77.0) Gecko/20100101 Firefox/77.0',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
+    ]
+    #Pick a random user agent
+    user_agent = random.choice(user_agent_list)
+    #Set the headers 
+    headers = {'User-Agent': user_agent}        
     try:
-        # headers for chrome browser to prevent a bot block making us report false errors
-        user_agent_list = [
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:77.0) Gecko/20100101 Firefox/77.0',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
-        ]
-        for i in range(1,4):
-            #Pick a random user agent
-            user_agent = random.choice(user_agent_list)
-            #Set the headers 
-            headers = {'User-Agent': user_agent}
-            # send a request to the site and log the response
-            response = requests.get(website.get_url, headers=headers)
+        try:
+            # ---  send a request to the site and log the response
+            response = requests.get(website.get_url(), headers=headers)
             if response.status_code == 200:
-                msg = f"site {website.name} ({website.get_url}) online with 200 response"
+                msg = f"site {website.name} ({website.get_url()}) online with 200 response"
                 log.info(msg=msg)
             else:
-                msg = f"Warnign: site {website.name} ({website.get_url}) online but has a {response.status_code} response"
+                msg = f"Warnign: site {website.name} ({website.get_url()}) online but has a {response.status_code} response"
+                log.warning(msg)
+            site_status = str(response.status_code)
+        except requests.exceptions.SSLError as e:
+            # log security error
+            msg: str = f"{site_status} on site '{website.name}' ({website.get_url()}):\n\t{e}\n"
+            log.error(msg,exc_info=True)
+            # --- Retry the connection without verifying the SSL certificate
+            # --- First we ignore SSL errors
+            # Get the requests session
+            session: requests.Session = requests.Session()
+            # set the session to not verify SSL certificates
+            session.verify = False
+            # send a request to the site and log the response
+            response = session.get(website.get_url(), headers=headers)
+            if response.status_code == 200:
+                msg = f"Warning: site {website.name} ({website.get_url()}) online with 200 response and invalid certificate"
+                log.warn(msg=msg)
+            else:
+                msg = f"Warnign: site {website.name} ({website.get_url()}) online but has a {response.status_code} response invalid certificate"
                 log.warning(msg)
             site_status = str(response.status_code)
     except requests.exceptions.ConnectionError as e:
         site_status = 'Unable to connect'
         # log connection error
-        msg: str = f'{site_status} site {website.name} ({website.get_url}):\n\t{e}\n'
+        msg: str = f'{site_status} site {website.name} ({website.get_url()}):\n\t{e}\n'
         log.error(msg,exc_info=True)
     except Exception as e:
         site_status = 'Unknown Error checking page'
         # log the exception
-        msg: str = f'Unknown exception checking site {website.name} ({website.get_url}):\n\t{e}\n'
+        msg: str = f'Unknown exception checking site {website.name} ({website.get_url()}):\n\t{e}\n'
         log.error(msg,exc_info=True)
     finally:
         return site_status
@@ -309,18 +332,18 @@ async def site_checker(website: models.Website) -> bool:
         # Check the site and store response code
         status.response_code = await test_site(website)
         # get the timestamp
-        status.timestamp = datetime.datetime.now()
+        status.timestamp = datetime.now()
         # add the status to the DB
         db.add(status)
         db.commit()
         success = True
     except sqlalchemy.exc.InvalidRequestError as e:
         # log the exception
-        msg = f'Error commiting a status add for site {website.name} ({website.get_url}):\n\t{e}'
+        msg = f'Error commiting a status add for site {website.name} ({website.get_url()}):\n\t{e}'
         log.error(msg,exc_info=True)
     except Exception as e:
         # log unknown error
-        msg = f'Unknown exception commiting a status add for site {website.name} ({website.get_url}):\n\t{e}'
+        msg = f'Unknown exception commiting a status add for site {website.name} ({website.get_url()}):\n\t{e}'
         log.error(msg, exc_info=True)
     finally:
         return success 
@@ -335,8 +358,9 @@ async def do_checks():
     # get list of stati
     stati: List[models.Status] = db.query(models.Status).all()
     # Broadcast stati to the clients
-    manager.broadcast(stati)
-# TODO: run schedule to perform site checks here
+    await manager.broadcast(stati)
+
+# Method to run the site checks 
 def checker_jobs():
     try:
         asyncio.run(do_checks())
@@ -367,7 +391,7 @@ def startup_event():
 def shutdown_event():
     log.warning("App shutting down")
     # Shutdown the scheduler
-    scheduler.shutdown()
+    scheduler.shutdown(wait=False)
     # do shut down house cleaning
     with open('log.txt', mode='a') as log_file:
         time = datetime.now()

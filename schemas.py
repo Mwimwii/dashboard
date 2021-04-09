@@ -42,3 +42,10 @@ class WebAdmin(BaseModel):
 
     class Config:
         orm_mode = True
+
+class DashboardItem(WebsitePost):
+    online: bool
+    response_code: str
+    # TODO: timestamp?
+    class Config:
+        orm_mode = False
