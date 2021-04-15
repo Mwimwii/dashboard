@@ -2,15 +2,17 @@ var addSiteBtn = document.getElementById('addNeWebsite');
 var addSiteDialog = document.getElementById('add-website');
 var outputBox = document.querySelector('output');
 var saveBtn = document.getElementById('saveBtn');
-const hostname = "127.0.0.1:8000"
+var siteData;
+const hostname = "127.0.0.1:8000";
 // Form modal for site modal
-const siteForm = document.getElementById("siteModal")
+const siteForm = document.getElementById("siteModal");
 
 // fuction to upload the website entered in the modal form
 function saveWebsite(event){
   let url = "/addsite"
   const formdData = new FormData(siteForm);
   const website = Object.fromEntries(formdData.entries())
+  siteData = website
   // upload form data
   fetch(url, {
     method: "POST",
@@ -18,7 +20,7 @@ function saveWebsite(event){
     headers: {"Content-type": "application/json; charset=UTF-8"}
   })
   .then(response => response.json)
-  .then(json => console.log(json))
+  .then(json => console.log(json()))
   .catch(err => alert("Failed to add site"))
 }
 
@@ -27,7 +29,7 @@ addSiteBtn.addEventListener('click', function onOpen() {
   if (typeof addSiteDialog.showModal === "function") {
     addSiteDialog.showModal();
   } else {
-    alert("The <dialog> API is not supported by this browser");
+    alert("The <dialog> API is not supported by this browser, please download the latest version of Chrome, Firefox, or Edge");
   }
 });
 // "Confirm" button of form triggers "close" on dialog because of [method="dialog"]
