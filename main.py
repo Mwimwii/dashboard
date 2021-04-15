@@ -3,7 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from logging import Logger, debug
 import logging
 from typing import List
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Form
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -21,6 +21,7 @@ from datetime import datetime
 from loguru import logger
 from apscheduler.executors.pool import ThreadPoolExecutor#, ProcessPoolExecutor
 from app_log import make_logger
+from decouple import config, Csv
 import asyncio
 import sqlalchemy
 import models
@@ -55,7 +56,7 @@ app = FastAPI()
 # add middle ware classes
 app.add_middleware(
     CORSMiddleware, # Enable Cross Origin Resource Sharing
-    allow_origins=['127.0.0.1:8000',] # enable the listed sites as origins
+    allow_origins=config('allow_origins', cast=Csv()) # enable the listed sites as origins
 )
 
 # Moount the static files folder
@@ -91,7 +92,7 @@ class ConnectionManager:
     async def send_personal_message(self, message: BaseModel, websocket: WebSocket):
         await websocket.send_text(message)
 
-    async def broadcast(self, message: BaseModel, websocket: WebSocket = None):
+    async def broadcast(self, message: dict, websocket: WebSocket = None):
         for connection in self.active_connections:
             if websocket is None:
                 message = jsonable_encoder(message)
@@ -104,9 +105,9 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 # Function to broadcast through the connection manager
-def broadcast(data: List[BaseModel]):
-    # only fire a broadcast if t
-    if manager.active_connections > 0:
+def broadcast(data: dict):
+    # only fire a websocket broadcast if there are active socket clients connected
+    if len(manager.active_connections) > 0:
         manager.broadcast(data)
 
 # An endpoint tothe homepage (site root)
@@ -131,10 +132,13 @@ async def add_site(new_site: schemas.WebsitePost, db: Session = Depends(get_db))
         db.commit()
         # log the add
         log.info(f"Website {website.name} ({website.get_url()}) with id '{website.id}' succsesfully added to the database")
-        # Get list of sites
-        sites = db.query(models.Website).all()
+        # make the dashboard item
+        item: schemas.DashboardItem = schemas.DashboardItem()
+        item.set_values(new_site)
+        # make the payload to send through the sockets
+        payload: dict = {'action': schemas.PayloadAction.CREATE, 'data' : item}
         # Broadcast site list to all clients
-        await manager.broadcast(sites)
+        await broadcast(payload)
     except sqlalchemy.exc.InvalidRequestError as e:
         # log the exception
         msg = f'Error commiting a website add for site {website.name} ({website.get_url()}):\n\t{e}'
@@ -165,10 +169,13 @@ async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depend
         website.url = update.url if update.url else website.url
         # Commit the changes
         db.commit()
-        # Get list of all sites
-        sites = await convert_sites(db.query(models.Website).all())
+        # Make the DashboardItem
+        item: schemas.DashboardItem = schemas.DashboardItem()
+        item.set_values(website=website)
+        # Make the payload to send to socket clients
+        payload: dict = {'action': schemas.PayloadAction.UPDATE, 'data': item}
         # Update all clients with new list
-        await manager.broadcast(sites)
+        await broadcast(payload)
         # log successful update
         log.info(f"Succsefully updated site: {website.name} ({website.get_url()}) with data:\n{update}")
     except Exception as e:
@@ -190,14 +197,16 @@ async def remove_site(id: str, db: Session = Depends(get_db)):
             # Log error
             msg = f"Delete query for a website with id '{id}':\n\t No such website in the database."
             log.error(msg=msg, exc_info=True)
-            return
+            raise HTTPException(status_code=404, detail='Website not found')
         db.query(models.Website).filter_by(id = id).delete(synchronize_session='evaluate')
         db.commit()
         log.info(f"Website {website.name}({website.get_url()}) with id '{website.id}' succsesfully deleted from the database")
-        # Get list of sites
-        sites = db.query(models.Website).all()
+        # Make the payload to send to the socket clients
+        payload: dict = {'action': schemas.PayloadAction, 'data': id}
         # update all socket clients of new list
-        await manager.broadcast(sites)
+        await broadcast(payload)
+    except HTTPException:
+        pass # Already logged the exception, no need to do so again
     except Exception as e:
         # log unknown error
         msg = f"Unknown exception deleting website with id '{id}':\n\t{e}"
@@ -209,9 +218,11 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
     await manager.connect(websocket)
     # Get list of sites
     sites: List[schemas.WebsitePost] = await convert_sites(db.query(models.Website).all())
+    # create the response payload
+    payload: dict = {'action' : schemas.PayloadAction.REFRESH, 'data': sites}
     try:
         # Send list of sites to all clients
-        await manager.broadcast(sites)
+        await broadcast(payload)
     except WebSocketDisconnect as e:
         #print(f'Websocket  error:\n{e}')
         # log the exception
@@ -244,7 +255,7 @@ async def ping_site(website: models.Website) -> bool:
     try:
         response: Response = ping(website.url, count=1)
         if response.success:
-            msg: str = f'Ping succsessfule for site {website.name} ({website.get_url()})'
+            msg: str = f'Ping succsessful for site {website.name} ({website.get_url()})'
             log.info(msg)
             is_online =  True
         else:
@@ -334,6 +345,12 @@ async def site_checker(website: models.Website) -> bool:
         # get the timestamp
         status.timestamp = datetime.now()
         # add the status to the DB
+        # Make Dashboard Item
+        item: schemas.DashboardItem = schemas.DashboardItem()
+        item.set_values(website=website, status=status)
+        # Make the payload and broadcast it to all users
+        payload: dict = {'action' : schemas.PayloadAction.UPDATE, 'data' : item}
+        broadcast(payload)
         db.add(status)
         db.commit()
         success = True
@@ -353,12 +370,10 @@ async def do_checks():
     # get list of sites
     db: Session = next(get_db())
     sites: List[models.Website] = db.query(models.Website).all()
-    # TODO: parralelise the call to sitecheck with list
-    _ = [await site_checker(site) for site in sites]
-    # get list of stati
-    stati: List[models.Status] = db.query(models.Status).all()
-    # Broadcast stati to the clients
-    await manager.broadcast(stati)
+    map(site_checker, sites)
+    #_ = [await site_checker(site) for site in sites]
+    
+    
 
 # Method to run the site checks 
 def checker_jobs():
