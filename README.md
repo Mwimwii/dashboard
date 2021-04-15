@@ -6,18 +6,24 @@
 
 ## Introduction
 
-This is a fork of mwimwi's  repository by the same name
+This is a fork of mwimwi's  repository by the same name.
+The Dashboard is a web app that allows for the real-time monitoring of websites and their status, status being whether their web server is online, and if they have an error or non `success` (200)  http response code.
 
 ## Download & Installation
 
-To download it you need to first clone the repository and download the set of dependencies that the app requires to run by running the following commands:
+To download it you need to first clone the git repository and download the set of dependencies that the app requires to run by running the following commands:
 
 ```bash
 git clone https://github.com/itisentropy/dashboard/
 cd dashboard
 pip install -r requirements.txt
 ```
+If you do not have git installed on your system you can download it from [here](https://git-scm.com/download/), then run the commands again.
+
 ## Configurations
+
+To configure the application, open the `.env example` file and create a new file named `.env` with the settings found in the `.env example` file.
+
 ## Running the app
 
 This app runs on an ASGI server called `uvicorn`. This server is built into the project so to run it simply runt the `uvicorn <module>:<app name>` command with `<module>` being the name of the python file where the app is instantiated in and `<app name> `being the name that the app is instantiated with. In the case of this project the python file is named main and the app name is app so you type the following command:
@@ -25,10 +31,10 @@ This app runs on an ASGI server called `uvicorn`. This server is built into the 
 ```bash
 uvicorn main:app
 ```
-It is also possible to run the app and listen for changes to source files so the server automatically restarts to load your code changes. Be careful when using this feature though because it watches all files so only use it if your app does not write to log files during execution. You can watch for changes by running the following command.
+It is also possible to run the app and listen for changes to source files so the server automatically restarts to load your code changes. Be careful when using this feature though because it watches all files so only use it if your app does not write to log files during execution. You can watch for changes by running the following command:
 
 ```bash
 uvicorn main:app --reload
 ```
 
-The web application should now be running on `127.0.0.1:8000` and `<your_ip>:8000`
+The web application should now be running on `127.0.0.1:8000`.
