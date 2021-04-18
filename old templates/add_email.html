@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+
+
+{% block body %}
+
+<canvas id="myChart" width="400" height="50"></canvas>
+<div class="container my-3">
+    <h2 class="text-center"> Add email </h2>
+</div>
+<canvas id="myChart" width="400" height="50"></canvas>
+
+    <form class="formwrapper text-center" action="{{url_for('add_email', url_id=url_id)}}" method="post">
+
+
+            <label for="RecipientName">Recipient Name: </label>
+            <input type="text" name="name" id="RecipientName" placeholder="Johnathan Mumba">
+
+            <label for="Email">Email: </label>
+            <input type="text" name="email" id="Email" placeholder="johnathan.mumba@szi.gov.zm">
+
+        <button type="submit">Submit</button>
+    </form>
+
+
+{% endblock %}
+
+
