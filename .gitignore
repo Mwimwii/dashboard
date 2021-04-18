@@ -1,6 +1,7 @@
 env/
 .vscode/
 __pycache__/
+node_modules/
 .env
 update_deps.bat
 *.db
