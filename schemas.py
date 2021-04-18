@@ -68,7 +68,7 @@ class DashboardItem(BaseModel):
 
 # Class containing enums for payload actions
 class PayloadAction(Enum):
-    REFRESH = 'refresh'
-    UPDATE = 'update'
-    DELETE = 'delete'
-    CREATE = 'create'
+    REFRESH = 0
+    UPDATE = 1
+    DELETE = 2
+    CREATE = 3
