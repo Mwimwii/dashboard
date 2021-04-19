@@ -7,7 +7,7 @@
 ## Introduction
 
 This is a fork of mwimwi's  repository by the same name.
-The Dashboard is a web app that allows for the real-time monitoring of websites and their status, status being whether their web server is online, and if they have an error or non `success` (200)  http response code.
+The Dashboard is a web app that allows for the real-time monitoring of websites and their status, status being whether their web server is online, and if they have an error or non `success` (200)  http response code, or an SSL error.
 
 ## Download & Installation
 
@@ -35,6 +35,12 @@ It is also possible to run the app and listen for changes to source files so the
 
 ```bash
 uvicorn main:app --reload
+```
+
+You can also change what port the webserver runs on by using the  optional `--port <port_number>`  command modifier so the server runs on the port specified in place of `<port_number>`. All together the command now looks like this:
+
+```bash
+uvicorn main:app --reload --port 8000
 ```
 
 The web application should now be running on `127.0.0.1:8000`.
