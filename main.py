@@ -105,10 +105,10 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 # Function to broadcast through the connection manager
-def broadcast(data: dict):
+async def broadcast(data: dict):
     # only fire a websocket broadcast if there are active socket clients connected
     if len(manager.active_connections) > 0:
-        manager.broadcast(data)
+        await manager.broadcast(data)
 
 # An endpoint tothe homepage (site root)
 @app.get("/", response_class = HTMLResponse)
@@ -152,7 +152,7 @@ async def add_site(new_site: schemas.WebsitePost, db: Session = Depends(get_db))
 @app.patch("/update/{id}")
 async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depends(get_db)):
     # get the object to be updated from DB
-    website: models.Website = db.query(models.Website).filter_by(id = id)
+    website: models.Website = db.query(models.Website).filter_by(id = id).first()
     if website is None:
         # Log error
         msg = f"Update query for a website with id '{id}':\n\t No such website in the database."
@@ -160,13 +160,17 @@ async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depend
         return
     try:
         # update the site name if the name was in the body or leave it as is
-        website.name = update.name if update.name else website.name
+        if update.name:
+            website.name = update.name
         # update the site port if the port was in the body or leave it as is
-        website.port = update.port if update.port else website.port
+        if update.port:
+            website.port = update.port
         # update the site protocol if the protocol was in the body or leave it as is
-        website.protocol = update.protocol if update.protocol else website.protocol
+        if update.protocol:
+            website.protocol = update.protocol
         # update the site url if the url was in the body or leave it as is
-        website.url = update.url if update.url else website.url
+        if update.url:
+            website.url = update.url 
         # Commit the changes
         db.commit()
         # Make the DashboardItem
@@ -182,12 +186,7 @@ async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depend
         # Log error
         msg = f"Delete query for a website with id '{id}':\n\t No such website in the database."
         log.error(msg=msg, exc_info=True)
-    finally:
-        # free resoures
-        del(db)
-        del(update)
-        del(id)
-
+    
 # An endpoint to delete a website
 @app.delete("/delete/{id}")
 async def remove_site(id: str, db: Session = Depends(get_db)):
@@ -314,7 +313,7 @@ async def test_site(website: models.Website) -> str:
             else:
                 msg = f"Warnign: site {website.name} ({website.get_url()}) online but has a {response.status_code} response invalid certificate"
                 log.warning(msg)
-            site_status = str(response.status_code)
+            site_status = f"Insecure ({response.status_code})"
     except requests.exceptions.ConnectionError as e:
         site_status = 'Unable to connect'
         # log connection error
@@ -348,11 +347,12 @@ async def site_checker(website: models.Website) -> bool:
         # Make Dashboard Item
         item: schemas.DashboardItem = schemas.DashboardItem()
         item.set_values(website=website, status=status)
-        # Make the payload and broadcast it to all users
-        payload: dict = {'action' : schemas.PayloadAction.UPDATE, 'data' : item}
-        broadcast(payload)
+        # store status in the database
         db.add(status)
         db.commit()
+        # Make the payload and broadcast it to all users
+        payload: dict = {'action' : schemas.PayloadAction.UPDATE, 'data' : item}
+        await broadcast(payload)
         success = True
     except sqlalchemy.exc.InvalidRequestError as e:
         # log the exception
@@ -370,7 +370,8 @@ async def do_checks():
     # get list of sites
     db: Session = next(get_db())
     sites: List[models.Website] = db.query(models.Website).all()
-    map(site_checker, sites)
+    # map(site_checker, sites)
+    await asyncio.wait([site_checker(site) for site in sites])
     #_ = [await site_checker(site) for site in sites]
     
     
@@ -394,8 +395,11 @@ def startup_event():
     # log app startup
     log.info("App starting up")
     # Schedule health check jobs
-    dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=100 , minutes=1, id='dashboard_site_pinger')
-    # init db, get db objs, do whatever
+    dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=100 , seconds=30, id='dashboard_site_pinger')
+    # Start the scheduler if it isnt running
+    if not scheduler.running:
+        scheduler.start()
+    # dash_work.resume()
     with open('log.txt', mode='a') as log_file:
         time = datetime.now()
         msg: str = f'[{time}]: Application starting\n'
