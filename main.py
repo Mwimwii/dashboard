@@ -59,7 +59,7 @@ app.add_middleware(
     allow_origins=config('allow_origins', cast=Csv()) # enable the listed sites as origins
 )
 
-# Moount the static files folder
+# Mount the static files application (and its folder)
 app.mount('/static', StaticFiles(directory='static'), name='static')
 
 # Mount the templates directory
@@ -313,7 +313,7 @@ async def test_site(website: models.Website) -> str:
             else:
                 msg = f"Warnign: site {website.name} ({website.get_url()}) online but has a {response.status_code} response invalid certificate"
                 log.warning(msg)
-            site_status = f"Insecure ({response.status_code})"
+            site_status = f"Invalid Certificate ({response.status_code})"
     except requests.exceptions.ConnectionError as e:
         site_status = 'Unable to connect'
         # log connection error
@@ -395,7 +395,8 @@ def startup_event():
     # log app startup
     log.info("App starting up")
     # Schedule health check jobs
-    dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=100 , seconds=30, id='dashboard_site_pinger')
+    # TODO : uncomment
+    # dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=100 , seconds=30, id='dashboard_site_pinger')
     # Start the scheduler if it isnt running
     if not scheduler.running:
         scheduler.start()
