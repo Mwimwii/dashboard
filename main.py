@@ -396,7 +396,7 @@ def startup_event():
     log.info("App starting up")
     # Schedule health check jobs
     # TODO : uncomment
-    # dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=100 , seconds=30, id='dashboard_site_pinger')
+    dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=100 , seconds=30, id='dashboard_site_pinger')
     # Start the scheduler if it isnt running
     if not scheduler.running:
         scheduler.start()
