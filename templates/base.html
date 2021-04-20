@@ -1,0 +1,114 @@
+<html lang="en-gb">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monitoring System - {%block title%}{% endblock %}</title>
+
+    <!-- CSS -->
+    <!-- Icons -->
+    <link
+      href="{{  url_for('static', path='/css/all.min.css')  }}"
+      rel="stylesheet"
+    />
+    <link
+      href="{{  url_for('static', path='/css/boxicons.min.css')  }}"
+      rel="stylesheet"
+    />
+    <!-- Lib -->
+    <link
+      rel="stylesheet"
+      href="{{  url_for('static', path='/css/bootstrap.min.css')  }}"
+    />
+    <!-- <link rel="stylesheet" href="css/datatables.min.css"> -->
+    <link
+      rel="stylesheet"
+      href="{{  url_for('static', path='/css/mdb.min.css')  }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', path='css/main.css') }}"
+    />
+    <link
+      rel="icon"
+      href="{{ url_for('static', path='/img/favicon.jpg') }}"
+      sizes="32x34"
+    />
+
+    {% block css %} {% endblock %}
+  </head>
+  <body onload="window.scrollTo(0, 1);">
+    <!--Header-->
+    <header class="page-header">Site Header</header>
+    <!--Container of content and sidebars-->
+    <div class="container">
+      <!--left sidebar-->
+      <aside id="left-sidebar" class="box">Left sidebar</aside>
+      <!--Main content-->
+      <main>
+        <!-- Content here -->
+        {% block main %} {% endblock %} {% block script %} {% endblock %}
+      </main>
+      <!--right sidebar-->
+      <aside id="right-sidebar" class="box">
+        <!--add site diag-->
+        <dialog id="add-website">
+          <form method="dialog" id="siteModal">
+            <p>
+              Add a website
+              <label>
+                Site Name
+                <input
+                  id="sitename"
+                  placeholder="Enter the website's name"
+                  type="text"
+                />
+              </label>
+              <label>
+                Protocol
+                <select>
+                  <option disabled selected>Select a protocol</option>
+                  <option>http</option>
+                  <option>https</option>
+                  <option>ftp</option>
+                </select>
+              </label>
+              <label
+                >Website url
+                <input id="website-url" type="text" />
+              </label>
+              <label
+                >Port
+                <input id="website-port" type="number" />
+              </label>
+            </p>
+            <menu>
+              <button value="cancel">Cancel</button>
+              <button id="saveBtn" value="default">Save site</button>
+            </menu>
+          </form>
+        </dialog>
+        <!--/add site diag-->
+        <!--Add site button-->
+        <menu>
+          <button id="addNeWebsite">Add a website</button>
+        </menu>
+        <!--/Add site button-->
+        <output aria-live="polite"></output>
+      </aside>
+    </div>
+    <footer>Site footer &copy;2021 - Smart Zambia Institute</footer>
+  </body>
+  <!-- Scripts -->
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"
+    defer
+  ></script>
+  <script
+    src="{{  url_for('static', path='/js/websocket.js')  }}"
+    defer
+  ></script>
+  <script src="{{  url_for('static', path='/js/main.js')  }}" defer></script>
+  <script src="{{ url_for('static', path='/js/jquery-3.4.0.slim.min.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/bootstrap.min.js') }}" defer></script>
+  <script src="{{ url_for('static', path='/js/tableToCards.js') }}" defer></script>
+</html>
