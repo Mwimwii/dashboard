@@ -62,7 +62,7 @@ function addRow(site){
         trow.className = "odd";
     }
     // set values of the row according to the site values
-    setRowValues(site, row);
+    setRowValues(site, trow);
 }
 
 // Function to delete a site given id
@@ -91,7 +91,7 @@ function updateSite(site){
 function refreshSites(sites){
     // modify variable then table
     websites = [];
-    for(let i = 0; i < websites.length; i++){
+    for(let i = 0; i < sites.length; i++){
         // get site at index i
         let site = sites[i];
         // add site to websites array
