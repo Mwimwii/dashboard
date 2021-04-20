@@ -1,56 +1,22 @@
-{% extends "layout.html" %}
-
-{%block title%}Monito{% endblock %}
-
-{% block body %}
-<canvas id="myChart" width="100" height="100"></canvas>
-
-<div class="container">
-  <a class="btn btn-outline-success float-md-left my-2" href="{{ url_for('form') }}"> +Add Site </a>
-</div>
-{% if sites %}
-
-<table class="table">
-
+{% extends "base.html" %} {% block css %}
+<link
+  href="{{  url_for('static', path='/css/tables.css')  }}"
+  rel="stylesheet"
+/>
+{% endblock %} {%block title%}Dashboard{% endblock %} {% block main %}
+<!--data-card-width sets the minimum width fo making cards, modify post testing-->
+<table class="table" id="sites-table" data-card-width="600">
   <thead>
     <tr>
-      <th scope="col">Name</th>
-      <th scope="col">Last Checked</th>
-      <th scope="col">Status</th>
-      <th scope="col">URL/IP</th>
-      <!-- <th scope="col">PORT</th> -->
-      <!-- <th scope="col">timeup</th> -->
-      <th scope="col">Details</th>
-      <th scope="col"></th>
-      <th scope="col"></th>
+      <th data-card-title>Site name</th>
+      <th>Protocol</th>
+      <th data-card-action-links>URL</th>
+      <th>Port</th>
+      <th>Last checked</th>
+      <th data-card-footer>Server status</th>
+      <th data-card-footer>Site status</th>
     </tr>
   </thead>
-  <tbody>
-    {% for site in sites %}
-    <tr>
-      <td>{{ site.name }}</td>
-      <td>{{ site.timestamp }}</td>
-        {% if site.status == "ON" %}
-          <td style="background-color: rgb(184, 236, 132);">ONLINE</td>
-        {% elif site.status == "NR" %}
-          <td style="background-color:#FFBF00;">NOT RESPONDING</td>
-        {% elif site.status == "INITIALIZING" %}
-          <td style="background-color:#999993;">INITIALIZING</td>
-        {% else %}
-            <td style="background-color:rgb(226, 103, 128);">OFFLINE</td>
-        {% endif %}
-      <td>{{ site.url }}</td>
-      <!-- <td>NIL{{site.port}}</td> -->
-      <td>
-        <a href="{{ url_for('ip', url_id=site.url_id, page=1)}}">Details</a></td>
-        <td>
-          <a href="{{ url_for('edit', url_id=site.url_id)}}">Edit</a></td>
-        <td>
-        <a href="{{ url_for('remove', url_id=site.url_id)}}">Remove</a></td>
-    </tr>
-    {% endfor %}
-  </tbody>
+  <tbody id="sites-table-body"></tbody>
 </table>
-{% else %}
-<h1 style="color: red">There are no websites</h1>
-{% endif %} {% endblock %}
+{% endblock %}
