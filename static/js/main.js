@@ -34,6 +34,7 @@ addSiteBtn.addEventListener('click', function onOpen() {
 });
 // "Confirm" button of form triggers "close" on dialog because of [method="dialog"]
 addSiteDialog.addEventListener('close', function onClose() {
+  // TODO: do something when it closes Probably a toast, snackbar, or aleart
   outputBox.value = addSiteDialog.returnValue + " button clicked - " + (new Date()).toString();
 });
 // "save" button saves a website and uploads a fetch
