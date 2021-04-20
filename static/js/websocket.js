@@ -79,8 +79,8 @@ function deleteSite(id){
 function updateSite(site){
     // modify variable
     const siteExists = (element) => element.id === site.id;
-    let site = websites.find(siteExists);
-    if(typeof site !== "undefined"){
+    let website = websites.find(siteExists);
+    if(typeof website !== "undefined"){
         let index = websites.findIndex(siteExists);
         websites[index] = site;
         let trow = document.getElementById(site.id);
@@ -111,7 +111,7 @@ function createSite(site){
 // actions to perform when a message is recieved via the websocket
 ws.onmessage = function(event) {
     // TODO: get site list from here and append to it
-    var content = JSON.parse(event.data);
+    let content = JSON.parse(event.data);
     switch(content.action){
         case actions.REFRESH:
             refreshSites(content.data)
@@ -126,9 +126,7 @@ ws.onmessage = function(event) {
             createSite(content.data)
             break;
     }
-
-    let sites = content;
-    let statuses = content;
     peekContent = content;
-    console.log(`recieved ${content[0]}`)        
+    // TODO: remove pre production
+    console.log(`recieved ${content}`)        
 };
