@@ -1,12 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>You are offline</title>
+{% extend base.html %}
+    {% block title %}You are offline{% endblock %}
 
+{% block styles %}
     <!-- Inline the page's stylesheet. -->
     <style>
       body {
@@ -27,8 +23,9 @@
         display: block;
       }
     </style>
-  </head>
-  <body>
+{% endblock %}
+
+ {% block content %}
     <h1>You are offline</h1>
 
     <p>Click the button below to try reloading.</p>
@@ -66,5 +63,4 @@
 
       checkNetworkAndReload();
     </script>
-  </body>
-</html>
+{% endblock %}
