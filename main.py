@@ -85,10 +85,14 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-
 @app.get("/")
 async def get():
     return HTMLResponse(html)
+
+# Endpoint for serving the default offline response page the SW will cache at install and serve offline users subsequently.
+@app.get("/imoffline", response_class = HTMLResponse)
+async def get_offline_page(request: Request):
+    return templates.TemplateResponse('offline.html', {'request': request})
 
 
 @app.websocket("/ws/{client_id}")
