@@ -305,6 +305,8 @@ async def test_site(website: models.Website) -> str:
             session: requests.Session = requests.Session()
             # set the session to not verify SSL certificates
             session.verify = False
+            # suppress the warning about insecure requests
+            requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
             # send a request to the site and log the response
             response = session.get(website.get_url(), headers=headers)
             if response.status_code == 200:
