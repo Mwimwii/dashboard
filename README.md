@@ -31,13 +31,20 @@ This app runs on an ASGI server called `uvicorn`. This server is built into the 
 ```bash
 uvicorn main:app
 ```
-It is also possible to run the app and listen for changes to source files so the server automatically restarts to load your code changes. Be careful when using this feature though because it watches all files so only use it if your app does not write to log files during execution. You can watch for changes by running the following command:
+### Server command arguments
+
+1. `--reload` automatically reloads whenever a file in the directory or its child directories is changed
+2. ` --port` specifies the port which the server listens on
+3. `--workers` specifies the number of workers the server will have
+4. `--host` specifies the IP address the server will host itself on
+
+It is possible to run the app and listen for changes to source files so the server automatically restarts to load your code changes by using the `--reload` argument. Be careful when using this feature though because it watches all files so only use it if your app does not write to log files during execution. You can watch for changes by running the following command:
 
 ```bash
 uvicorn main:app --reload
 ```
 
-You can also change what port the webserver runs on by using the  optional `--port <port_number>`  command modifier so the server runs on the port specified in place of `<port_number>`. All together the command now looks like this:
+You can change what port the webserver runs on by using the  optional `--port <port_number>`  command modifier so the server runs on the port specified in place of `<port_number>`. All together the command now looks like this:
 
 ```bash
 uvicorn main:app --reload --port 8000
