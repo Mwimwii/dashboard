@@ -107,22 +107,24 @@
     src="{{  url_for('static', path='/js/websocket.js')  }}"
     defer
   ></script>
-  <script src="{{  url_for('static', path='/js/main.js')  }}" defer></script>
+  <script src="{{  url_for('static', path='/js/main.js')  }}" ></script>
   <script
     src="{{ url_for('static', path='/js/jquery-3.4.0.slim.min.js') }}"
-    defer
+    
   ></script>
+  <script src="{{ url_for('static', path='/js/jquery.dataTables.min.js') }}">
+  </script>
   <script
     src="{{ url_for('static', path='js/bootstrap.min.js') }}"
     defer
   ></script>
-  <script
-    src="{{ url_for('static', path='/js/tableToCards.js') }}"
-    defer
-  ></script>
-  <script defer>
+  <script src="{{ url_for('static', path='/js/dataTables.bootstrap4.min.js') }}"></script>
+  <script >
     $(document).ready(function () {
       $("#sites-table").DataTable();
     });
   </script>
+  <script
+    src="{{ url_for('static', path='/js/tableToCards.js') }}"
+  ></script>
 </html>
