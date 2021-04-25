@@ -108,7 +108,21 @@
     defer
   ></script>
   <script src="{{  url_for('static', path='/js/main.js')  }}" defer></script>
-  <script src="{{ url_for('static', path='/js/jquery-3.4.0.slim.min.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/bootstrap.min.js') }}" defer></script>
-  <script src="{{ url_for('static', path='/js/tableToCards.js') }}" defer></script>
+  <script
+    src="{{ url_for('static', path='/js/jquery-3.4.0.slim.min.js') }}"
+    defer
+  ></script>
+  <script
+    src="{{ url_for('static', path='js/bootstrap.min.js') }}"
+    defer
+  ></script>
+  <script
+    src="{{ url_for('static', path='/js/tableToCards.js') }}"
+    defer
+  ></script>
+  <script defer>
+    $(document).ready(function () {
+      $("#sites-table").DataTable();
+    });
+  </script>
 </html>
