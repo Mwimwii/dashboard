@@ -248,7 +248,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
         #print(f'Websocket  error:\n{e}')
         # log the exception
         msg: str = f'\nWebsocketDisconnect error:\n\t{e}\n'
-        # TODO:  log.error(msg,exc_info=True)
+        log.error(msg,exc_info=True)
         with open('error.txt', mode='a') as log:
             time = datetime.now()
             msg: str = f'WebsocketDisconnect error:\n\t{e}\nApplication shutting down\n'
@@ -256,7 +256,6 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
         manager.disconnect(websocket)
 
         msg = f"Client #{client_id} disconnected"
-       # TODO:  logger.info(msg)
     except Exception as e:
         # log the exception
         msg: str = f'Websocket error:\n\t{e}\n'
@@ -320,7 +319,7 @@ async def test_site(website: models.Website) -> str:
         except requests.exceptions.SSLError as e:
             # log security error
             msg: str = f"{site_status} on site '{website.name}' ({website.get_url()}):\n\t{e}\n"
-            log.error(msg)# TODO: uncomment,exc_info=False)
+            log.error(msg,exc_info=False)
             # --- Retry the connection without verifying the SSL certificate
             # --- First we ignore SSL errors
             # Get the requests session
@@ -340,7 +339,7 @@ async def test_site(website: models.Website) -> str:
         site_status = 'Unable to connect'
         # log connection error
         msg: str = f'{site_status} site {website.name} ({website.get_url()}):\n\t{e}\n'
-        # TODO: uncomment log.error(msg,exc_info=True)
+        log.error(msg,exc_info=True)
     except Exception as e:
         site_status = 'Unknown Error checking page'
         # log the exception
@@ -384,7 +383,7 @@ async def site_checker(website: models.Website) -> bool:
     except Exception as e:
         # log unknown error
         msg = f'Unknown exception commiting a status add for site {website.name} ({website.get_url()}):\n\t{e}'
-        # TODO: log.error(msg, exc_info=True)
+        log.error(msg, exc_info=True)
     finally:
         return success 
 
@@ -418,7 +417,6 @@ def startup_event():
     # log app startup
     log.info("App starting up")
     # Schedule health check jobs
-    # TODO : uncomment
     dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=100 , seconds=30, id='dashboard_site_pinger')
     # Start the scheduler if it isnt running
     if not scheduler.running:
@@ -439,6 +437,7 @@ def shutdown_event():
     dash_work.remove()
     # Shutdown the scheduler
     scheduler.shutdown(wait=False)
+    
     # do shut down house cleaning
     with open('log.txt', mode='a') as log_file:
         time = datetime.now()
