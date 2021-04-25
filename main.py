@@ -86,18 +86,35 @@ class ConnectionManager:
         self.active_connections: List[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
+        '''
+            Accepts a websocket connection request and adds it to the active connection list for management
+        '''
         await websocket.accept()
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
+        '''
+            Removes a websocket from the active connection list.
+        '''
         self.active_connections.remove(websocket)
 
-    async def send_personal_message(self, message: BaseModel, websocket: WebSocket):
-        await websocket.send_text(message)
+    async def send_personal_message(self, message: dict, websocket: WebSocket):
+        '''
+            Sends a message to the supplied websocket.
+        '''
+        # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
+        message = jsonable_encoder(message)
+        # Send message
+        await websocket.send_json(message)
 
     async def broadcast(self, message: dict):
+        '''
+            Sends a message to all currently active Websocket connections.
+        '''
         for connection in self.active_connections:
+            # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
             message = jsonable_encoder(message)
+            # Send message
             await connection.send_json(message)
 
 # Instantiate the connection manager
@@ -223,7 +240,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int, db: Session =
     payload: dict = {'action' : schemas.PayloadAction.REFRESH, 'data': sites}
     try:
         # Send list of sites to the clients
-        #await broadcast(payload)
+        # await broadcast(payload)
         await manager.send_personal_message(payload, websocket)
         while True:
             await websocket.receive_json()
@@ -358,6 +375,7 @@ async def site_checker(website: models.Website) -> bool:
         # Make the payload and broadcast it to all users
         payload: dict = {'action' : schemas.PayloadAction.UPDATE, 'data' : item}
         await broadcast(payload)
+        log.critical(f"broadcast for payload: {payload} complete")
         success = True
     except sqlalchemy.exc.InvalidRequestError as e:
         # log the exception
@@ -415,6 +433,10 @@ def startup_event():
 @app.on_event('shutdown')
 def shutdown_event():
     log.warning("App shutting down")
+    # pause the job and remove it from the scheduler jobstore
+    dash_work: Job = scheduler.get_job(job_id='dashboard_site_pinger')
+    dash_work.pause()
+    dash_work.remove()
     # Shutdown the scheduler
     scheduler.shutdown(wait=False)
     # do shut down house cleaning
