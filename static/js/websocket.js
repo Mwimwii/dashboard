@@ -4,7 +4,7 @@ var websites = []; // array of websites
 // Enum of actions
 const actions = {
     REFRESH: 0,
-    UPDATE: 2,
+    UPDATE: 1,
     DELETE: 2,
     CREATE: 3,
 };
@@ -23,13 +23,13 @@ function sendMessage(event) {
 // Function to set values of a row
 function setRowValues(site){
     // create IDs for the cells
-    let nameID = `site${site.name}${site.id}`;
-    let protoID = `site${site.protocol}${site.id}`;
-    let urID = `site${site.url}${site.id}`;
-    let portID = `site${site.port}${site.id}`;
-    let lastCheckID = `site${site.timestamp}${site.id}`;
-    let servestaID = `site${site.online}${site.id}`;
-    let sitestatID = `site${site.response_code}${site.id}`;
+    let nameID = `siteName${site.id}`;
+    let protoID = `siteprotocol${site.id}`;
+    let urID = `siteUrl${site.id}`;
+    let portID = `sitePort${site.id}`;
+    let lastCheckID = `siteTimestamp${site.id}`;
+    let servestaID = `siteServerStatus${site.id}`;
+    let sitestatID = `siteResponseCode${site.id}`;
     // get cell rows
     let siteName = document.getElementById(nameID);
     let protocol = document.getElementById(protoID);
@@ -65,21 +65,21 @@ function addRow(site){
         trow.className = "odd";
     }
     // insert cells to the row
-    let siteName = row.insertCell();
-    let protocol = row.insertCell();
-    let url= row.insertCell();
-    let port = row.insertCell();
-    let lastCheck = row.insertCell();
-    let serverStat = row.insertCell();
-    let siteStat = row.insertCell();
+    let siteName = trow.insertCell();
+    let protocol = trow.insertCell();
+    let url= trow.insertCell();
+    let port = trow.insertCell();
+    let lastCheck = trow.insertCell();
+    let serverStat = trow.insertCell();
+    let siteStat = trow.insertCell();
     // create IDs for the cells
-    let nameID = `site${site.name}${site.id}`;
-    let protoID = `site${site.protocol}${site.id}`;
-    let urID = `site${site.url}${site.id}`;
-    let portID = `site${site.port}${site.id}`;
-    let lastCheckID = `site${site.timestamp}${site.id}`;
-    let servestaID = `site${site.online}${site.id}`;
-    let sitestatID = `site${site.response_code}${site.id}`;
+    let nameID = `siteName${site.id}`;
+    let protoID = `siteprotocol${site.id}`;
+    let urID = `siteUrl${site.id}`;
+    let portID = `sitePort${site.id}`;
+    let lastCheckID = `siteTimestamp${site.id}`;
+    let servestaID = `siteServerStatus${site.id}`;
+    let sitestatID = `siteResponseCode${site.id}`;
     // set IDs for the cells
     siteName.setAttribute("id", nameID);
     protocol.setAttribute("id", protoID);
@@ -107,10 +107,14 @@ function updateSite(site){
     // modify variable
     const siteExists = (element) => element.id === site.id;
     let website = websites.find(siteExists);
+    msg = `found site:\nName: ${website.name} in array\n${website}`
+    console.log(msg)
     if(typeof website !== "undefined"){
-        // let index = websites.findIndex(siteExists);
-        // websites[index] = site;
+        let index = websites.findIndex(siteExists);
+        websites[index] = site;
         setRowValues(website);
+        msg = `updating site:\nName: ${website.name}`
+        console.log(msg)
     }
 }
 // function to refresh the site list
@@ -160,7 +164,7 @@ ws.onmessage = function(event) {
     }
     peekContent = content;
     // TODO: remove pre production
-    console.log(`recieved ${content}`)        
+    console.log(`recieved:\n ${content}`)        
 };
 
 ws.onclose = function(event) {
