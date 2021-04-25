@@ -21,30 +21,33 @@ function sendMessage(event) {
 }
 
 // Function to set values of a row
-function setRowValues(site, row){
-    // insert cells at row end
-    let siteName = row.insertCell();
-    let protocol = row.insertCell();
-    let url= row.insertCell();
-    let port = row.insertCell();
-    let lastCheck = row.insertCell();
-    let serverStat = row.insertCell();
-    let siteStat = row.insertCell();
+function setRowValues(site){
+    // create IDs for the cells
+    let nameID = `site${site.name}${site.id}`;
+    let protoID = `site${site.protocol}${site.id}`;
+    let urID = `site${site.url}${site.id}`;
+    let portID = `site${site.port}${site.id}`;
+    let lastCheckID = `site${site.timestamp}${site.id}`;
+    let servestaID = `site${site.online}${site.id}`;
+    let sitestatID = `site${site.response_code}${site.id}`;
+    // get cell rows
+    let siteName = document.getElementById(nameID);
+    let protocol = document.getElementById(protoID);
+    let url= document.getElementById(urID);
+    let port = document.getElementById(portID);
+    let lastCheck = document.getElementById(lastCheckID);
+    let serverStat = document.getElementById(servestaID);
+    let siteStat = document.getElementById(sitestatID);
+    // make the site url a link
+    siteurl = `<a href="${site.protocol}://${site.url}:${site.port}" target="_blank">${site.url}</a>`
     // add text to cell
-    let text = document.createTextNode(site.name);
-    siteName.appendChild(text);
-    text.nodeValue = site.protocol;
-    protocol.appendChild(text);
-    text.nodeValue = site.url;
-    url.appendChild(text);
-    text.nodeValue = site.port;
-    port.appendChild(text);
-    text.nodeValue = site.timestamp;
-    lastCheck.appendChild(text)
-    text.nodeValue = site.online;
-    serverStat.appendChild(text);
-    text.nodeValue = site.response_code;
-    siteStat.appendChild(text);
+    siteName.innerHTML = site.name
+    protocol.innerHTML = site.protocol;
+    url.innerHTML = siteurl;
+    port.innerHTML = site.port;
+    lastCheck.innerHTML = site.timestamp;
+    serverStat.innerHTML = site.online;
+    siteStat.innerHTML = site.response_code;
 }
 
 // Function to add rows to the table
@@ -61,8 +64,32 @@ function addRow(site){
     } else{
         trow.className = "odd";
     }
+    // insert cells to the row
+    let siteName = row.insertCell();
+    let protocol = row.insertCell();
+    let url= row.insertCell();
+    let port = row.insertCell();
+    let lastCheck = row.insertCell();
+    let serverStat = row.insertCell();
+    let siteStat = row.insertCell();
+    // create IDs for the cells
+    let nameID = `site${site.name}${site.id}`;
+    let protoID = `site${site.protocol}${site.id}`;
+    let urID = `site${site.url}${site.id}`;
+    let portID = `site${site.port}${site.id}`;
+    let lastCheckID = `site${site.timestamp}${site.id}`;
+    let servestaID = `site${site.online}${site.id}`;
+    let sitestatID = `site${site.response_code}${site.id}`;
+    // set IDs for the cells
+    siteName.setAttribute("id", nameID);
+    protocol.setAttribute("id", protoID);
+    url.setAttribute("id", urID);
+    port.setAttribute("id", portID);
+    lastCheck.setAttribute("id", lastCheckID);
+    serverStat.setAttribute("id", servestaID);
+    siteStat.setAttribute("id", sitestatID);
     // set values of the row according to the site values
-    setRowValues(site, trow);
+    setRowValues(site);
 }
 
 // Function to delete a site given id
@@ -81,16 +108,21 @@ function updateSite(site){
     const siteExists = (element) => element.id === site.id;
     let website = websites.find(siteExists);
     if(typeof website !== "undefined"){
-        let index = websites.findIndex(siteExists);
-        websites[index] = site;
-        let trow = document.getElementById(site.id);
-        setRowValues(site, trow);
+        // let index = websites.findIndex(siteExists);
+        // websites[index] = site;
+        setRowValues(website);
     }
 }
 // function to refresh the site list
 function refreshSites(sites){
     // modify variable then table
     websites = [];
+    tbody = document.getElementById("sites-table-body");
+    // delete old rows from table
+    let numRows = tbody.rows.length;
+    for(let i = 0; i < numRows; i++){
+        tbody.deleteRow(i)
+    }
     for(let i = 0; i < sites.length; i++){
         // get site at index i
         let site = sites[i];
@@ -130,3 +162,10 @@ ws.onmessage = function(event) {
     // TODO: remove pre production
     console.log(`recieved ${content}`)        
 };
+
+ws.onclose = function(event) {
+    console.log("web socket disconnected for some reason");
+    console.log("reason:");
+    console.log(event);
+    console.log(event.data);
+}
