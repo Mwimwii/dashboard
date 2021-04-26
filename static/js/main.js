@@ -10,8 +10,16 @@ const siteForm = document.getElementById("siteModal");
 // fuction to upload the website entered in the modal form
 function saveWebsite(event){
   let url = "/addsite"
-  const formdData = new FormData(siteForm);
-  const website = Object.fromEntries(formdData.entries())
+  const siteName = document.getElementById("sitename");
+  const siteUrl = document.getElementById("website-url");
+  const siteProtocol = document.getElementById("site-protocol");
+  const sitePort = document.getElementById("website-port");
+  const website = { 
+  	name: siteName.value,
+  	protocol: siteProtocol.value,
+  	url: siteUrl.value,
+  	port: sitePort.value,
+  };
   siteData = website
   // upload form data
   fetch(url, {
