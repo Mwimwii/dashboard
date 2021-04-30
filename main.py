@@ -102,20 +102,32 @@ class ConnectionManager:
         '''
             Sends a message to the supplied websocket.
         '''
-        # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
-        message = jsonable_encoder(message)
-        # Send message
-        await websocket.send_json(message)
+        try:
+            # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
+            message = jsonable_encoder(message)
+            # Send message
+            await websocket.send_json(message)
+        except WebSocketDisconnect as e:
+            # log the exception
+            msg: str = f'\nWebsocketDisconnect error:\n\t{e}\n'
+            log.error(msg,exc_info=True)
+            self.disconnect(websocket)
 
     async def broadcast(self, message: dict):
         '''
             Sends a message to all currently active Websocket connections.
         '''
         for connection in self.active_connections:
-            # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
-            message = jsonable_encoder(message)
-            # Send message
-            await connection.send_json(message)
+            try:
+                # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
+                message = jsonable_encoder(message)
+                # Send message
+                await connection.send_json(message)
+            except WebSocketDisconnect as e:
+                # log the exception
+                msg: str = f'\nWebsocketDisconnect error:\n\t{e}\n'
+                log.error(msg,exc_info=True)
+                self.disconnect(connection)
 
 # Instantiate the connection manager
 manager = ConnectionManager()
@@ -124,7 +136,7 @@ manager = ConnectionManager()
 async def broadcast(data: dict):
     # only fire a websocket broadcast if there are active socket clients connected
     if len(manager.active_connections) > 0:
-        await manager.broadcast(data)
+        await manager.broadcast(data)            
     else:
         await manager.broadcast(data)
         raise RuntimeError("No open web sockets")
