@@ -38,7 +38,7 @@ executors = {
 # Initialise the logger
 log: Logger = make_logger()
 
-# # set the app scheduler log level to debug
+# # set the app scheduler log level
 logging.basicConfig()
 logging.getLogger('apscheduler').setLevel(logging.ERROR)
 
@@ -47,7 +47,7 @@ scheduler: BackgroundScheduler = BackgroundScheduler(executers=executors)
 # start the scheduler
 scheduler.start()
 
- # suppress the warnings about insecure requests
+# suppress the warnings about insecure requests
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
 # create the database
@@ -68,7 +68,7 @@ app.mount('/static', StaticFiles(directory='static'), name='static')
 # Mount the templates directory
 templates = Jinja2Templates(directory='templates')
 
-# Dependancy returns a db connection and closses it once it's used
+# Dependancy that returns a db connection session and closses it once it's used
 def get_db():
     try:
         db = SessionLocal()
@@ -151,13 +151,6 @@ async def add_site(new_site: schemas.WebsitePost, db: Session = Depends(get_db))
         db.commit()
         # log the add
         log.info(f"Website {website.name} ({website.get_url()}) with id '{website.id}' succsesfully added to the database")
-        # make the dashboard item
-        item: schemas.DashboardItem = schemas.DashboardItem()
-        item.set_values(new_site)
-        # make the payload to send through the sockets
-        payload: dict = {'action': schemas.PayloadAction.CREATE, 'data' : item}
-        # Broadcast site list to all clients
-        await broadcast(payload)
     except sqlalchemy.exc.InvalidRequestError as e:
         # log the exception
         msg = f'Error commiting a website add for site {website.name} ({website.get_url()}):\n\t{e}'
@@ -382,7 +375,7 @@ async def site_checker(website: models.Website) -> bool:
         log.error(msg,exc_info=True)
     except Exception as e:
         # log unknown error
-        msg = f'Unknown exception commiting a status add for site {website.name} ({website.get_url()}):\n\t{e}'
+        msg = f'Unknown exception commiting/broadcasting a status add for site {website.name} ({website.get_url()}):\n\t{e}'
         log.error(msg, exc_info=True)
     finally:
         return success 
@@ -417,7 +410,7 @@ def startup_event():
     # log app startup
     log.info("App starting up")
     # Schedule health check jobs
-    dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=100 , seconds=30, id='dashboard_site_pinger')
+    dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=3 , seconds=30, id='dashboard_site_pinger')
     # Start the scheduler if it isnt running
     if not scheduler.running:
         scheduler.start()
