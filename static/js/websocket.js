@@ -172,4 +172,5 @@ ws.onclose = function(event) {
     console.log("reason:");
     console.log(event);
     console.log(event.data);
+    ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`); // try to reconnect
 }
