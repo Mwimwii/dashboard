@@ -3,9 +3,8 @@ var addSiteDialog = document.getElementById('add-website');
 var outputBox = document.querySelector('output');
 var saveBtn = document.getElementById('saveBtn');
 var siteData;
+let editSiteDialog = document.getElementById("edit-website");
 const hostname = "127.0.0.1:8000";
-// Form modal for site modal
-const siteForm = document.getElementById("siteModal");
 
 // fuction to upload the website entered in the modal form
 function saveWebsite(event){
@@ -20,7 +19,7 @@ function saveWebsite(event){
   	url: siteUrl.value,
   	port: sitePort.value,
   };
-  siteData = website
+  siteData = website;
   // upload form data
   fetch(url, {
     method: "POST",
@@ -29,7 +28,22 @@ function saveWebsite(event){
   })
   .then(response => response.json)
   .then(json => console.log(json()))
-  .catch(err => alert("Failed to add site"))
+  .catch(err => alert("Failed to add site"));
+}
+
+// function to upload modifications to a site
+function modifyWebsite(event){
+	// TODO: get website from event or whatever and use it to get values from it
+	let siteID;
+	let url = `/update/${siteID}`;
+	const website = {};
+
+	// TODO: complete this
+	fetch(url, {
+		method: "UPDATE",
+		body: JSON.stringify(website),
+		headers: {"Content-type": "application/json; charset=UTF-8"}
+	});
 }
 
 // "Add new website" button opens the <dialog> modally
