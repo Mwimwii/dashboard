@@ -146,6 +146,11 @@ async def broadcast(data: dict):
 async def get(request: Request):
     return templates.TemplateResponse('home.html', {'request': request})
 
+# Endpoint for serving the default offline response page the SW will cache at install and serve offline users subsequently.
+@app.get("/imoffline", response_class = HTMLResponse)
+async def get_offline_page(request: Request):
+    return templates.TemplateResponse('offline.html', {'request': request})
+
 # An endpoint to add a website
 @app.post("/addsite")
 async def add_site(new_site: schemas.WebsitePost, db: Session = Depends(get_db)):
