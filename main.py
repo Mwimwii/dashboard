@@ -38,7 +38,7 @@ executors = {
 # Initialise the logger
 log: Logger = make_logger()
 
-# # set the app scheduler log level to debug
+# # set the app scheduler log level
 logging.basicConfig()
 logging.getLogger('apscheduler').setLevel(logging.ERROR)
 
@@ -47,7 +47,7 @@ scheduler: BackgroundScheduler = BackgroundScheduler(executers=executors)
 # start the scheduler
 scheduler.start()
 
- # suppress the warnings about insecure requests
+# suppress the warnings about insecure requests
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
 # create the database
@@ -68,7 +68,7 @@ app.mount('/static', StaticFiles(directory='static'), name='static')
 # Mount the templates directory
 templates = Jinja2Templates(directory='templates')
 
-# Dependancy returns a db connection and closses it once it's used
+# Dependancy that returns a db connection session and closses it once it's used
 def get_db():
     try:
         db = SessionLocal()
@@ -102,20 +102,32 @@ class ConnectionManager:
         '''
             Sends a message to the supplied websocket.
         '''
-        # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
-        message = jsonable_encoder(message)
-        # Send message
-        await websocket.send_json(message)
+        try:
+            # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
+            message = jsonable_encoder(message)
+            # Send message
+            await websocket.send_json(message)
+        except WebSocketDisconnect as e:
+            # log the exception
+            msg: str = f'\nWebsocketDisconnect error:\n\t{e}\n'
+            log.error(msg,exc_info=True)
+            self.disconnect(websocket)
 
     async def broadcast(self, message: dict):
         '''
             Sends a message to all currently active Websocket connections.
         '''
         for connection in self.active_connections:
-            # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
-            message = jsonable_encoder(message)
-            # Send message
-            await connection.send_json(message)
+            try:
+                # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
+                message = jsonable_encoder(message)
+                # Send message
+                await connection.send_json(message)
+            except WebSocketDisconnect as e:
+                # log the exception
+                msg: str = f'\nWebsocketDisconnect error:\n\t{e}\n'
+                log.error(msg,exc_info=True)
+                self.disconnect(connection)
 
 # Instantiate the connection manager
 manager = ConnectionManager()
@@ -124,7 +136,7 @@ manager = ConnectionManager()
 async def broadcast(data: dict):
     # only fire a websocket broadcast if there are active socket clients connected
     if len(manager.active_connections) > 0:
-        await manager.broadcast(data)
+        await manager.broadcast(data)            
     else:
         await manager.broadcast(data)
         raise RuntimeError("No open web sockets")
@@ -151,13 +163,6 @@ async def add_site(new_site: schemas.WebsitePost, db: Session = Depends(get_db))
         db.commit()
         # log the add
         log.info(f"Website {website.name} ({website.get_url()}) with id '{website.id}' succsesfully added to the database")
-        # make the dashboard item
-        item: schemas.DashboardItem = schemas.DashboardItem()
-        item.set_values(new_site)
-        # make the payload to send through the sockets
-        payload: dict = {'action': schemas.PayloadAction.CREATE, 'data' : item}
-        # Broadcast site list to all clients
-        await broadcast(payload)
     except sqlalchemy.exc.InvalidRequestError as e:
         # log the exception
         msg = f'Error commiting a website add for site {website.name} ({website.get_url()}):\n\t{e}'
@@ -382,7 +387,7 @@ async def site_checker(website: models.Website) -> bool:
         log.error(msg,exc_info=True)
     except Exception as e:
         # log unknown error
-        msg = f'Unknown exception commiting a status add for site {website.name} ({website.get_url()}):\n\t{e}'
+        msg = f'Unknown exception commiting/broadcasting a status add for site {website.name} ({website.get_url()}):\n\t{e}'
         log.error(msg, exc_info=True)
     finally:
         return success 
@@ -417,7 +422,7 @@ def startup_event():
     # log app startup
     log.info("App starting up")
     # Schedule health check jobs
-    dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=100 , seconds=30, id='dashboard_site_pinger')
+    dash_work: Job = scheduler.add_job(checker_jobs,'interval', name='Site Pinger', max_instances=3 , seconds=30, id='dashboard_site_pinger')
     # Start the scheduler if it isnt running
     if not scheduler.running:
         scheduler.start()

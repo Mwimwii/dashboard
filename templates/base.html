@@ -38,7 +38,7 @@
   </head>
   <body onload="window.scrollTo(0, 1);">
     <!--Header-->
-    <header class="page-header">Site Header</header>
+    <header class="page-header">{% block header %}{% endblock header %}Site Header</header>
     <!--Container of content and sidebars-->
     <div class="container">
       <!--left sidebar-->
@@ -65,7 +65,7 @@
               </label>
               <label>
                 Protocol
-                <select>
+                <select id="site-protocol">
                   <option disabled selected>Select a protocol</option>
                   <option>http</option>
                   <option>https</option>
@@ -95,8 +95,10 @@
         <!--/Add site button-->
         <output aria-live="polite"></output>
       </aside>
+      <dialog id="edit-website">
+      </dialog>
     </div>
-    <footer>Site footer &copy;2021 - Smart Zambia Institute</footer>
+    <footer>{% block footer %}{% endblock footer %}&copy;2021 - Smart Zambia Institute</footer>
   </body>
   <!-- Scripts -->
   <script
@@ -110,13 +112,11 @@
   <script src="{{  url_for('static', path='/js/main.js')  }}" ></script>
   <script
     src="{{ url_for('static', path='/js/jquery-3.4.0.slim.min.js') }}"
-    
   ></script>
   <script src="{{ url_for('static', path='/js/jquery.dataTables.min.js') }}">
   </script>
   <script
     src="{{ url_for('static', path='js/bootstrap.min.js') }}"
-    defer
   ></script>
   <script src="{{ url_for('static', path='/js/dataTables.bootstrap4.min.js') }}"></script>
   <script >
