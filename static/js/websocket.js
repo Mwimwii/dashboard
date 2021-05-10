@@ -40,13 +40,15 @@ function setRowValues(site){
     let siteStat = document.getElementById(sitestatID);
     // make the site url a link
     siteurl = `<a href="${site.protocol}://${site.url}:${site.port}" target="_blank">${site.url}</a>`
+    // set the server status message
+    serverOnline = site.online ? "online" : "Offline";
     // add text to cell
     siteName.innerHTML = site.name
     protocol.innerHTML = site.protocol;
     url.innerHTML = siteurl;
     port.innerHTML = site.port;
     lastCheck.innerHTML = site.timestamp;
-    serverStat.innerHTML = site.online;
+    serverStat.innerHTML = serverOnline;
     siteStat.innerHTML = site.response_code;
 }
 
@@ -153,7 +155,14 @@ ws.onmessage = function(event) {
             refreshSites(content.data)
             break;
         case actions.UPDATE:
-            updateSite(content.data)
+            // if the row exixts continue. else create it and set values
+            let thisrow = document.getElementById(site.id)
+            if(thisrow !== "undefined"){
+                updateSite(content.data);
+            }
+            else{
+                createSite(content.data);
+            }
             break;
         case actions.DELETE:
             deleteSite(content.data)
@@ -172,5 +181,5 @@ ws.onclose = function(event) {
     console.log("reason:");
     console.log(event);
     console.log(event.data);
-    ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`); // try to reconnect
+    ws = new WebSocket(`ws://localhost:8000/ws/${client_id}`); // try to reconnect the websocket
 }
