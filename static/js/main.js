@@ -3,8 +3,32 @@ var addSiteDialog = document.getElementById('add-website');
 var outputBox = document.querySelector('output');
 var saveBtn = document.getElementById('saveBtn');
 var siteData;
-let editSiteDialog = document.getElementById("edit-website");
+var editSiteDialog = document.getElementById("edit-website");
 const hostname = "127.0.0.1:8000";
+var responseMessage = "";
+var requestSuccessful = false;
+
+
+// show a message
+function informUser(){
+  // TODO: snackbar or toast here
+}
+
+// function to upload modifications to a site
+function modifyWebsite(event){
+	// TODO: get website from event or whatever and use it to get values from it
+	let siteID;
+	let url = `/update/${siteID}`;
+	const website = {};
+
+	// TODO: complete this
+	fetch(url, {
+		method: "UPDATE",
+		body: JSON.stringify(website),
+		headers: {"Content-type": "application/json; charset=UTF-8"}
+	});
+}
+
 
 // fuction to upload the website entered in the modal form
 function saveWebsite(event){
@@ -26,27 +50,26 @@ function saveWebsite(event){
     body: JSON.stringify(website),
     headers: {"Content-type": "application/json; charset=UTF-8"}
   })
-  .then(response => response.json)
+  .then(response => {
+    if(response.ok){
+      requestSuccessful = true
+      responseMessage = "Site added succsessfully, Please add an administrator"
+    }
+    else{
+      requestSuccessful = false
+      responseMessage = "failed to add site.\nCheck your connection and try again"
+    }
+    
+  })
   .then(json => console.log(json()))
   .catch(err => alert("Failed to add site"));
 }
 
-// function to upload modifications to a site
-function modifyWebsite(event){
-	// TODO: get website from event or whatever and use it to get values from it
-	let siteID;
-	let url = `/update/${siteID}`;
-	const website = {};
-
-	// TODO: complete this
-	fetch(url, {
-		method: "UPDATE",
-		body: JSON.stringify(website),
-		headers: {"Content-type": "application/json; charset=UTF-8"}
-	});
+// Function to make a website admin
+function createAdmin(){
+  // TODO: fill with logic
 }
-
-// "Add new website" button opens the <dialog> modally
+// "Add new website" button opens the <dialog> modally. only if modal API is supported by the browser
 addSiteBtn.addEventListener('click', function onOpen() {
   if (typeof addSiteDialog.showModal === "function") {
     addSiteDialog.showModal();

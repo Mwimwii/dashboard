@@ -4,7 +4,7 @@ from logging import Logger, debug
 import logging
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Form, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -119,10 +119,13 @@ class ConnectionManager:
         '''
         for connection in self.active_connections:
             try:
-                # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
-                message = jsonable_encoder(message)
-                # Send message
-                await connection.send_json(message)
+                if connection.client_state.CONNECTED:
+                    # Make the payload JSON encodable (no idea why this is needed but a bug in the API encoder insists)
+                    message = jsonable_encoder(message)
+                    # Send message
+                    await connection.send_json(message)
+                elif connection.client_state.DISCONNECTED:
+                    self.disconnect(connection)
             except WebSocketDisconnect as e:
                 # log the exception
                 msg: str = f'\nWebsocketDisconnect error:\n\t{e}\n'
@@ -138,8 +141,9 @@ async def broadcast(data: dict):
     if len(manager.active_connections) > 0:
         await manager.broadcast(data)            
     else:
-        await manager.broadcast(data)
-        raise RuntimeError("No open web sockets")
+        pass
+        # await manager.broadcast(data)
+        # raise RuntimeError("No open web sockets")
 
 # An endpoint tothe homepage (site root)
 @app.get("/", response_class = HTMLResponse)
@@ -168,6 +172,12 @@ async def add_site(new_site: schemas.WebsitePost, db: Session = Depends(get_db))
         db.commit()
         # log the add
         log.info(f"Website {website.name} ({website.get_url()}) with id '{website.id}' succsesfully added to the database")
+        # get the ID of the site from the DB model
+        new_site.id = website.id
+        # JSON enable it (Pydantic bug workaround)
+        res = jsonable_encoder(new_site)
+        # return a response to caller
+        return JSONResponse(res)
     except sqlalchemy.exc.InvalidRequestError as e:
         # log the exception
         msg = f'Error commiting a website add for site {website.name} ({website.get_url()}):\n\t{e}'
@@ -177,16 +187,44 @@ async def add_site(new_site: schemas.WebsitePost, db: Session = Depends(get_db))
         msg = f'Unknown exception commiting add for site {website.name} ({website.get_url()})::\n\t{e}'
         log.error(msg, exc_info=True)       
 
+# Endpoint for site creation
+@app("/adminadd")
+async def create_admin(new_admin: schemas.WebAdmin, db: Session = Depends(get_db)):
+    admin: models.WebAdmins = models.WebAdmins(
+        name = new_admin.name,
+        email_address = new_admin.email_address,
+        sites = new_admin.sites
+    )
+    try:
+        # add the website to the DB Session
+        db.add(admin)
+        # Commit the transaction (save to DB)
+        db.commit()
+        # log the add
+        log.info(f"Webadmin {admin.name} with id '{admin.id}' succsesfully added to the database")
+        # get the ID of the site from the DB model
+        new_admin.id = admin.id
+        # JSON enable it (Pydantic bug workaround)
+        res = jsonable_encoder(new_admin)
+        # return a response to caller
+        return JSONResponse(res)
+    except sqlalchemy.exc.InvalidRequestError as e:
+        # log the exception
+        msg = f'Error commiting a website add for site {admin.name}:\n\t{e}'
+        log.error(msg,exc_info=True)
+    except Exception as e:
+        # log unknown error
+        msg = f'Unknown exception commiting add for site {admin.name}:\n\t{e}'
+        log.error(msg, exc_info=True) 
+
 # An endpoint to modify a website
 @app.patch("/update/{id}")
 async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depends(get_db)):
     # get the object to be updated from DB
     website: models.Website = db.query(models.Website).filter_by(id = id).first()
     if website is None:
-        # Log error
-        msg = f"Update query for a website with id '{id}':\n\t No such website in the database."
-        log.error(msg=msg, exc_info=True)
-        return
+        # raise error
+        raise HTTPException(status_code=404, detail='Website not found')
     try:
         # update the site name if the name was in the body or leave it as is
         if update.name:
@@ -211,16 +249,50 @@ async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depend
         await broadcast(payload)
         # log successful update
         log.info(f"Succsefully updated site: {website.name} ({website.get_url()}) with data:\n{update}")
+        return JSONResponse(jsonable_encoder(update))
+    except HTTPException:
+        # log error
+        msg = f"Update query for a website with id '{id}':\n\t No such website in the database."
+        log.error(msg=msg, exc_info=True)
+        pass
     except Exception as e:
         # Log error
-        msg = f"Delete query for a website with id '{id}':\n\t No such website in the database."
+        msg = f"Delete query for a website with id '{id}'."
         log.error(msg=msg, exc_info=True)
-    
+
+# endpoint to update WebAdmins
+@app.patch("changeadmin/{id}")
+async def modify_admin(id:str, update:schemas.WebAdmin, db: Session = Depends(get_db)):
+    try:
+        admin = db.query(models.WebAdmins).filter_by(id = id).first()
+        if admin is None:
+            # Log error
+            msg = f"Update query for a website with id '{id}':\n\t No such website in the database."
+            log.error(msg=msg, exc_info=True)
+            raise HTTPException(status_code=404, detail='WebAdmin not found')
+        # change the values
+        if update.name:
+            admin.name = update.name
+        if update.email_address:
+            admin.email_address = update.email_address
+        if update.sites:
+            admin.sites = update.sites
+        # commit the transaction
+        db.commit()
+        # return response object
+        return JSONResponse(jsonable_encoder(update))
+    except HTTPException:
+        pass
+    except Exception as e:
+        # Log error
+        msg = f"Delete query for a Webadmin with id '{id}'."
+        log.error(msg=msg, exc_info=True)
+
 # An endpoint to delete a website
 @app.delete("/delete/{id}")
 async def remove_site(id: str, db: Session = Depends(get_db)):
     try:
-        website: models.Website = db.query(models.Website).filter_by(id = id)
+        website: models.Website = db.query(models.Website).filter_by(id = id).first()
         if website is None:
             # Log error
             msg = f"Delete query for a website with id '{id}':\n\t No such website in the database."
@@ -230,7 +302,7 @@ async def remove_site(id: str, db: Session = Depends(get_db)):
         db.commit()
         log.info(f"Website {website.name}({website.get_url()}) with id '{website.id}' succsesfully deleted from the database")
         # Make the payload to send to the socket clients
-        payload: dict = {'action': schemas.PayloadAction, 'data': id}
+        payload: dict = {'action': schemas.PayloadAction.DELETE, 'data': id}
         # update all socket clients of new list
         await broadcast(payload)
     except HTTPException:
@@ -238,6 +310,26 @@ async def remove_site(id: str, db: Session = Depends(get_db)):
     except Exception as e:
         # log unknown error
         msg = f"Unknown exception deleting website with id '{id}':\n\t{e}"
+        log.error(msg, exc_info=True)
+
+# remove a webadmin
+@app.delete("/deleteadmin/{id}")
+async def remove_Admin(id: str, db: Session = Depends(get_db)):
+    try:
+        admin: models.WebAdmins = db.query(models.WebAdmins).filter_by(id = id).first()
+        if admin is None:
+            # Log error
+            msg = f"Delete query for a web admin with id '{id}':\n\t No such admin in the database."
+            log.error(msg=msg, exc_info=True)
+            raise HTTPException(status_code=404, detail='WebAdmin not found')
+        db.query(models.WebAdmins).filter_by(id = id).delete(synchronize_session='evaluate')
+        db.commit()
+        log.info(f"WebAdmin {admin.name} with id '{admin.id}' succsesfully deleted from the database")
+    except HTTPException:
+        pass
+    except Exception as e:
+        # log unknown error
+        msg = f"Unknown exception deleting admin with id '{id}':\n\t{e}"
         log.error(msg, exc_info=True)
 
 # The websocket endpoint
