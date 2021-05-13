@@ -217,6 +217,25 @@ async def create_admin(new_admin: schemas.WebAdmin, db: Session = Depends(get_db
         msg = f'Unknown exception commiting add for site {admin.name}:\n\t{e}'
         log.error(msg, exc_info=True) 
 
+# make multiple admins
+@app.post("/makeadmins")
+async def create_Admins(new_admins: schemas.WebAdmin, db: Session = Depends(get_db)):
+    # make list of objs
+    admins = [models.WebAdmins(name = new_admin.name,email_address = new_admin.email_address,sites = new_admin.sites) for new_admin in new_admins]
+    try:
+        # add admins to db
+        db.bulk_save_objects(admins)
+        # commit to DB
+        db.commit()
+    except sqlalchemy.exc.InvalidRequestError as e:
+        # log the exception
+        msg = f'Error commiting admins:\n\t{e}'
+        log.error(msg,exc_info=True)
+    except Exception as e:
+        # log unknown error
+        msg = f'Unknown exception commiting add for admins:\n\t{e}'
+        log.error(msg, exc_info=True) 
+
 # An endpoint to modify a website
 @app.patch("/update/{id}")
 async def update_site(id:str, update: schemas.WebsitePatch, db: Session = Depends(get_db)):
