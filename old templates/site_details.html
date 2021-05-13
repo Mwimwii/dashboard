@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+{%block title%}10.21.0.242{% endblock %}
+
+{% block body %} {% if status %}
+<br>
+<h3>{{site.name}} - {{site.url}}</h3> <br>
+
+<!-- Chart.js chart -->
+
+<canvas id="myChart" width="400" height="100"></canvas>
+
+<div class="container">
+
+  <h2> Event Respondants</h2>
+  <ul>
+    
+    {% for email in site.emails %}
+    <li>
+      {{ email.name }}@{{ email.email_address }} -
+       <a href="#">Edit</a> -
+       <a href="{{url_for('remove_email', url_id=site.id, email_id=email.id)}}">Remove</a>
+      
+    </li>
+    {% endfor %}
+  </ul>
+  <a class="btn btn-outline-success" href="{{url_for('add_email', url_id=site.id)}}">+ Add Email</a>
+</div>
+
+<div class="text-center my-5">
+  <a href="{{ url_for('ip', url_id=site.id, page=site_page.prev_num)}}"
+    class="btn btn-outline-dark  {% if site_page.page == 1 %}disabled{% endif %}">
+    &laquo;
+    </a>
+    
+    {% for page_num in site_page.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+    {% if page_num %}
+    {% if site_page.page == page_num %}
+    <a href="{{ url_for('ip', url_id=site.id, page=page_num) }}"
+    class="btn btn-dark">
+    {{ page_num }}
+  </a>
+  {% else %}
+  <a href="{{ url_for('ip', url_id=site.id, page=page_num) }}"
+  class="btn btn-outline-dark">
+  {{ page_num }}
+</a>    
+{% endif %}
+{% else %}
+...  
+{% endif %}
+
+{% endfor %}
+<a href="{{ url_for('ip', url_id=site.id, page=site_page.next_num)}}"
+class="btn btn-outline-dark 
+{% if site_page.page == site_page.pages %}disabled{% endif %}">
+&raquo;
+</a>
+
+</div>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">Last Checked</th>
+      <th scope="col">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+      {% for ip in status %}
+        <tr>
+            <td>{{ ip.timestamp }}</td>
+              {% if ip.status == "ON" %}
+                <td style="background-color: rgb(205, 238, 173);">{{ ip.status}}</td>
+              {% elif ip.status == "NR" %}
+                <td style="background-color:#FFBF00;">NOT RESPONDING</td>
+              {% elif ip.status == "INITIALIZING" %}]
+                <td style="background-color:#9e9e9c;">INITIALIZING</td>
+              {% else %}
+                <td style="background-color:rgb(238, 123, 146);">{{ ip.status}}</td>
+              {% endif %}
+        </tr>
+      {% endfor %}
+  </tbody>
+</table>
+
+
+
+  {% else %}
+  <h1 style="color: red">There are no logs for the current site.</h1>
+  {% endif %} 
+  
+<p class="text-right mt-3">
+  Showing page {{ site_page.page }} of {{ site_page.pages }}
+  </p>  
+  {% endblock %}

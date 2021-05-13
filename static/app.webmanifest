@@ -1,0 +1,27 @@
+{
+  "short_name": "Dashboard",
+  "name": "Website Monitoring Dashboard",
+  "icons": [
+    {
+      "src": "/static/img/icons-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/static/img/icons-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/?source=pwa",
+  "background_color": "#3367D6",
+  "display_override": ["standalone", "window-control-overlay"],
+  "display": "minimal-ui",
+  "scope": "/",
+  "theme_color": "#3367D6",
+  "shortcuts": [],
+  "description": "A web app for monitoring the status and health of websites.",
+  "screenshots": [],
+  "orientation": "portrait-primary",
+  "lang": "en-GB"
+}

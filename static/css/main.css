@@ -1,5 +1,14 @@
 body{
     background-color: beige;
+    place-items: center;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+}
+header{
+    background: red;
+}
+footer{
+    background: green;
 }
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
@@ -9,3 +18,13 @@ input[type=number]::-webkit-outer-spin-button {
 input[type=number]{
     -moz-appearance: textfield;
 }
+.container{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.box {
+    flex: 1 1 150px; /*  Stretching: */
+    flex: 0 1 150px; /*  No stretching: */
+    margin: 5px;
+  }
