@@ -38,7 +38,9 @@
   </head>
   <body onload="window.scrollTo(0, 1);">
     <!--Header-->
-    <header class="page-header">{% block header %}{% endblock header %}Site Header</header>
+    <header class="page-header">
+      {% block header %}{% endblock header %}Site Header
+    </header>
     <!--Container of content and sidebars-->
     <div class="container">
       <!--left sidebar-->
@@ -51,40 +53,80 @@
       <!--right sidebar-->
       <aside id="right-sidebar" class="box">
         <!--add site diag-->
-        <dialog id="add-website">
-          <form method="dialog" id="siteModal">
+        <dialog id="add-website" class="modal-style">
+          <form method="" id="siteModal" class="border border-light p-5">
             <p>
               Add a website
-              <label>
-                Site Name
-                <input
-                  id="sitename"
-                  placeholder="Enter the website's name"
-                  type="text"
-                />
-              </label>
-              <label>
-                Protocol
-                <select id="site-protocol">
-                  <option disabled selected>Select a protocol</option>
-                  <option>http</option>
-                  <option>https</option>
-                  <option>ftp</option>
-                </select>
-              </label>
-              <label
-                >Website url
-                <input id="website-url" type="text" />
-              </label>
-              <label
-                >Port
-                <input id="website-port" type="number" />
-              </label>
+              <label for="sitename"> Site Name </label>
+              <input
+                id="sitename"
+                placeholder="Enter the website's name"
+                type="text"
+                class="form-control mb-4"
+              />
+
+              <label for="site-protocol"> Protocol </label>
+              <select
+                id="site-protocol"
+                class="browser-default custom-select mb-4"
+              >
+                <option disabled selected>Select a protocol</option>
+                <option>http</option>
+                <option>https</option>
+                <option>ftp</option>
+              </select>
+
+              <label for="website-url">Website url</label>
+              <input
+                id="website-url"
+                type="text"
+                placeholder="Enter site URL"
+                class="form-control mb-4"
+              />
+
+              <label for="website-port">Port</label>
+              <input
+                id="website-port"
+                type="number"
+                placeholder="Enter site port"
+                class="form-control mb-4"
+              />
             </p>
             <menu>
-              <button value="cancel">Cancel</button>
-              <button id="saveBtn" value="default">Save site</button>
+              <button value="cancel" class="btn btn-info btn-block my-4">
+                Cancel
+              </button>
+              <button
+                id="saveBtn"
+                value="default"
+                class="btn btn-info btn-block my-4"
+              >
+                Save site
+              </button>
             </menu>
+          </form>
+          <form method="" id="adminModal" class="border border-light p-5">
+            <p class="h4 mb-4 text-center">Add an admin</p>
+
+            <label for="adminEmail">Admin Email address</label>
+            <input
+              type="text"
+              id="adminEmail"
+              class="form-control mb-4"
+              placeholder="Enter E-mail address"
+            />
+
+            <label for="adminName">Admin Full Name</label>
+            <input
+              type="text"
+              id="adminName"
+              placeholder="enter admin name"
+              class="form-control mb-4"
+            />
+
+            <button class="btn btn-info btn-block my-4" id="saveAdminBTN">
+              Save
+            </button>
           </form>
         </dialog>
         <!--/add site diag-->
@@ -95,10 +137,11 @@
         <!--/Add site button-->
         <output aria-live="polite"></output>
       </aside>
-      <dialog id="edit-website">
-      </dialog>
+      <dialog id="edit-website"></dialog>
     </div>
-    <footer>{% block footer %}{% endblock footer %}&copy;2021 - Smart Zambia Institute</footer>
+    <footer>
+      {% block footer %}{% endblock footer %}&copy;2021 - Smart Zambia Institute
+    </footer>
   </body>
   <!-- Scripts -->
   <script
@@ -109,22 +152,15 @@
     src="{{  url_for('static', path='/js/websocket.js')  }}"
     defer
   ></script>
-  <script src="{{  url_for('static', path='/js/main.js')  }}" ></script>
-  <script
-    src="{{ url_for('static', path='/js/jquery-3.4.0.slim.min.js') }}"
-  ></script>
-  <script src="{{ url_for('static', path='/js/jquery.dataTables.min.js') }}">
-  </script>
-  <script
-    src="{{ url_for('static', path='js/bootstrap.min.js') }}"
-  ></script>
+  <script src="{{  url_for('static', path='/js/main.js')  }}"></script>
+  <script src="{{ url_for('static', path='/js/jquery-3.4.0.slim.min.js') }}"></script>
+  <script src="{{ url_for('static', path='/js/jquery.dataTables.min.js') }}"></script>
+  <script src="{{ url_for('static', path='js/bootstrap.min.js') }}"></script>
   <script src="{{ url_for('static', path='/js/dataTables.bootstrap4.min.js') }}"></script>
-  <script >
+  <script>
     $(document).ready(function () {
       $("#sites-table").DataTable();
     });
   </script>
-  <script
-    src="{{ url_for('static', path='/js/tableToCards.js') }}"
-  ></script>
+  <script src="{{ url_for('static', path='/js/tableToCards.js') }}"></script>
 </html>

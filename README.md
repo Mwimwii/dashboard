@@ -47,7 +47,7 @@ uvicorn main:app --reload
 You can change what port the webserver runs on by using the  optional `--port <port_number>`  command modifier so the server runs on the port specified in place of `<port_number>`. All together the command now looks like this:
 
 ```bash
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --port 8000 --workers 2 --host 127.0.0.1
 ```
 
-The web application should now be running on `127.0.0.1:8000`.
+The web application should now be running on `127.0.0.1:8000 `wit 2 worker threads and automatic reloading.
